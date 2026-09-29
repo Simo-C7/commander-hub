@@ -186,8 +186,35 @@
     /* Finestra "Nuova partita" */
     .gruppo-scelta { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
     .gruppo-scelta .btn-numero { width: 46px; padding: 8px 0; }
+    #finestra-nuova .pannello { max-width: 480px; max-height: 92vh; overflow-y: auto; }
     #finestra-nuova h3 { text-align: center; margin-top: 18px; }
     .esito-sorteggio { min-height: 1.4em; margin: 10px 0 16px; font-weight: 700; color: #ffe38a; }
+
+    /* Righe nome + comandante nella finestra "Nuova partita" */
+    .giocatori-nuova { display: grid; gap: 8px; text-align: left; }
+    .titolo-squadra {
+      margin-top: 4px;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--viola-chiaro);
+    }
+    .riga-giocatore { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+    .riga-giocatore input {
+      min-width: 0;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, .25);
+      border: 1px solid rgba(180, 140, 232, .3);
+      border-radius: 10px;
+      color: var(--testo);
+      font: inherit;
+      font-size: .92rem;
+    }
+    .riga-giocatore input:focus { outline: none; border-color: var(--viola-chiaro); }
+    .riga-giocatore .comandante-bozza { font-style: italic; }
+    .riga-giocatore .comandante-bozza.verificato { color: #ffe38a; }
+    .riga-giocatore .comandante-bozza.da-verificare { text-decoration: underline wavy var(--pericolo); }
 
     /* Pulsanti fluttuanti in basso a destra */
     .azioni-rapide {
@@ -919,6 +946,9 @@
         </div>
       </div>
 
+      <h3>Giocatori e comandanti</h3>
+      <div class="giocatori-nuova" id="giocatori-nuova"></div>
+
       <h3>Chi inizia?</h3>
       <div class="gruppo-scelta">
         <button class="btn" id="chi-inizia">👑 Sorteggia</button>
@@ -1435,14 +1465,26 @@
       posto.colori = unione.size ? ORDINE_MANA.filter(c => unione.has(c)) : ['C'];
     }
 
+    // Un campo comandante può stare su una scheda del tavolo oppure nella
+    // finestra "Nuova partita" (in quel caso ha l'attributo data-bozza)
+    const postoDelCampo = campo => campo.dataset.bozza
+      ? bozza.posti[campo.dataset.i]
+      : partitaAttuale().posti[campo.dataset.i];
+
+    const ridisegnaCampo = campo => (campo.dataset.bozza ? disegnaGiocatoriNuova() : disegna());
+
     function scegliComandante(campo, carta) {
-      const posto = partitaAttuale().posti[campo.dataset.i];
+      const posto = postoDelCampo(campo);
       posto.comandanti[campo.dataset.m] = carta.nome;
       posto.identita[campo.dataset.m] = carta.identita;
       posto.arte[campo.dataset.m] = carta.immagine || null;
-      aggiornaColoriDaComandanti(posto);
       chiudiTendina();
-      aggiorna();
+      if (campo.dataset.bozza) {
+        disegnaGiocatoriNuova();
+      } else {
+        aggiornaColoriDaComandanti(posto);
+        aggiorna();
+      }
     }
 
     // Quando esci dal campo senza aver scelto un suggerimento, correggiamo
@@ -1454,9 +1496,9 @@
         const risultati = await cercaComandanti(campo.value.trim());
         if (questa !== numeroRicerca) return;
         if (risultati.length) scegliComandante(campo, risultati[0]);
-        else disegna();   // resta sottolineato: non trovato
+        else ridisegnaCampo(campo);   // resta sottolineato: non trovato
       } catch (e) {
-        disegna();        // senza internet teniamo il nome così com'è
+        ridisegnaCampo(campo);        // senza internet teniamo il nome così com'è
       }
     }
 
@@ -1468,7 +1510,7 @@
     });
 
     // Frecce su/giù per muoversi nei suggerimenti, Invio per scegliere, Esc per chiudere
-    tavolo.addEventListener('keydown', evento => {
+    function tastiTendina(evento) {
       if (tendina.hidden || evento.target !== campoAttivo || !suggerimenti.length) return;
       if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
         evento.preventDefault();
@@ -1479,9 +1521,11 @@
         evento.preventDefault();
         scegliComandante(campoAttivo, suggerimenti[evidenziato]);
       } else if (evento.key === 'Escape') {
+        evento.stopPropagation();   // chiude solo la tendina, non la finestra
         chiudiTendina();
       }
-    });
+    }
+    tavolo.addEventListener('keydown', tastiTendina);
 
     // ---------- Sfondo personalizzato delle schede ----------
     const menuSfondo = document.getElementById('menu-sfondo');
@@ -1627,11 +1671,86 @@
     // Le scelte restano "in sospeso" finché non premi "Inizia partita"
     const finestraNuova = document.getElementById('finestra-nuova');
     const esitoSorteggio = document.getElementById('esito-sorteggio');
+    const giocatoriNuova = document.getElementById('giocatori-nuova');
     const scelta = { modalita: 'commander', numero: 4, primo: null };
 
+    // "Bozza" dei nomi e comandanti: una copia che diventa definitiva
+    // solo con "Inizia partita" (con Annulla non cambia niente)
+    // C'è una bozza per ogni tipo di partita, così passando da uno all'altro non si perde niente
+    let bozze = null;
+    let bozza = null;   // la bozza del tipo di partita selezionato
+    function creaBozze() {
+      const copia = partita => ({
+        posti: partita.posti.map(posto => ({
+          membri: [...posto.membri],
+          comandanti: [...posto.comandanti],
+          identita: posto.identita.map(x => (x ? [...x] : null)),
+          arte: [...posto.arte],
+        })),
+      });
+      bozze = { commander: copia(stato.partite.commander), thg: copia(stato.partite.thg) };
+    }
+
     // I giocatori della partita che si sta preparando
-    const postiScelti = () => stato.partite[scelta.modalita].posti
-      .slice(0, scelta.modalita === 'commander' ? scelta.numero : 2);
+    const postiScelti = () => bozza.posti.slice(0, scelta.modalita === 'commander' ? scelta.numero : 2);
+
+    function disegnaEsitoSorteggio() {
+      esitoSorteggio.textContent = scelta.primo === null
+        ? '' : `👑 Inizia ${nomePosto(postiScelti()[scelta.primo])}!`;
+    }
+
+    // Una riga per ogni giocatore: nome e comandante (con i suggerimenti di Scryfall)
+    function disegnaGiocatoriNuova() {
+      giocatoriNuova.innerHTML = postiScelti().map((posto, i) => {
+        const titolo = scelta.modalita === 'thg' ? `<div class="titolo-squadra">Squadra ${i + 1}</div>` : '';
+        const righe = posto.membri.map((nome, m) => {
+          const comandante = posto.comandanti[m];
+          const statoNome = !comandante ? '' : posto.identita[m] ? 'verificato' : 'da-verificare';
+          return `
+            <div class="riga-giocatore">
+              <input value="${pulisci(nome)}" maxlength="20" placeholder="Nome giocatore"
+                     data-bozza="1" data-i="${i}" data-m="${m}" data-campo="membri" aria-label="Nome giocatore">
+              <input class="comandante-bozza ${statoNome}" value="${pulisci(comandante)}" maxlength="60"
+                     placeholder="Comandante…" autocomplete="off" spellcheck="false"
+                     title="${statoNome === 'da-verificare' ? 'Comandante non trovato su Scryfall' : ''}"
+                     data-bozza="1" data-i="${i}" data-m="${m}" data-campo="comandanti" aria-label="Comandante">
+            </div>`;
+        }).join('');
+        return titolo + righe;
+      }).join('');
+      disegnaEsitoSorteggio();
+    }
+
+    giocatoriNuova.addEventListener('input', evento => {
+      const campo = evento.target;
+      if (!campo.dataset.campo) return;
+      const posto = bozza.posti[campo.dataset.i];
+      posto[campo.dataset.campo][campo.dataset.m] = campo.value;
+      if (campo.dataset.campo === 'comandanti') {
+        posto.identita[campo.dataset.m] = null;   // il nome è cambiato: va riverificato
+        posto.arte[campo.dataset.m] = null;
+        campo.classList.remove('verificato');
+        programmaRicerca(campo);
+      } else {
+        disegnaEsitoSorteggio();   // il sorteggio mostra il nome aggiornato
+      }
+    });
+
+    giocatoriNuova.addEventListener('change', evento => {
+      const campo = evento.target;
+      if (campo.dataset.campo !== 'comandanti') return;
+      chiudiTendina();
+      if (campo.value.trim() && !bozza.posti[campo.dataset.i].identita[campo.dataset.m]) {
+        verificaComandante(campo);
+      } else {
+        disegnaGiocatoriNuova();
+      }
+    });
+
+    giocatoriNuova.addEventListener('keydown', tastiTendina);
+    giocatoriNuova.addEventListener('focusout', evento => {
+      if (evento.target === campoAttivo) setTimeout(chiudiTendina, 150);
+    });
 
     function disegnaNuovaPartita() {
       finestraNuova.querySelectorAll('[data-modalita]').forEach(b =>
@@ -1640,14 +1759,15 @@
         b.classList.toggle('attivo', Number(b.dataset.numero) === scelta.numero));
       // Il numero di giocatori si sceglie solo in Commander
       document.getElementById('riga-numero').hidden = scelta.modalita !== 'commander';
-      esitoSorteggio.textContent = scelta.primo === null
-        ? '' : `👑 Inizia ${nomePosto(postiScelti()[scelta.primo])}!`;
+      disegnaGiocatoriNuova();
     }
 
     document.getElementById('nuova-partita').addEventListener('click', () => {
       scelta.modalita = stato.modalita;
       scelta.numero = stato.partite.commander.numero;
       scelta.primo = null;
+      creaBozze();
+      bozza = bozze[scelta.modalita];
       disegnaNuovaPartita();
       finestraNuova.hidden = false;
     });
@@ -1655,6 +1775,7 @@
     finestraNuova.querySelectorAll('[data-modalita]').forEach(b =>
       b.addEventListener('click', () => {
         scelta.modalita = b.dataset.modalita;
+        bozza = bozze[scelta.modalita];
         scelta.primo = null;   // cambiano i giocatori: il sorteggio va rifatto
         disegnaNuovaPartita();
       }));
@@ -1668,12 +1789,27 @@
 
     document.getElementById('chi-inizia').addEventListener('click', () => {
       scelta.primo = Math.floor(Math.random() * postiScelti().length);
-      disegnaNuovaPartita();
+      disegnaEsitoSorteggio();
     });
 
     document.getElementById('inizia-partita').addEventListener('click', () => {
       const precedente = stato.partite[scelta.modalita];
       if (scelta.modalita === 'commander') precedente.numero = scelta.numero;
+
+      // Nomi e comandanti della bozza diventano quelli della partita
+      bozza.posti.forEach((dalla, i) => {
+        const posto = precedente.posti[i];
+        const comandantiCambiati = dalla.comandanti.some((c, m) => c !== posto.comandanti[m]);
+        Object.assign(posto, {
+          membri: dalla.membri,
+          comandanti: dalla.comandanti,
+          identita: dalla.identita,
+          arte: dalla.arte,
+        });
+        // Se sono cambiati i comandanti, i colori della scheda si adeguano
+        if (comandantiCambiati) aggiornaColoriDaComandanti(posto);
+      });
+
       stato.partite[scelta.modalita] = nuovaPartita(scelta.modalita, precedente);
       stato.modalita = scelta.modalita;
       aggiorna();
