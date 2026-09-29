@@ -200,7 +200,8 @@
       letter-spacing: .1em;
       color: var(--viola-chiaro);
     }
-    .riga-giocatore { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+    .riga-giocatore { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; }
+    .riga-giocatore .scegli-mazzo { width: 52px; cursor: pointer; }
     .riga-giocatore input {
       min-width: 0;
       padding: 8px 10px;
@@ -1701,6 +1702,16 @@
 
     // Una riga per ogni giocatore: nome e comandante (con i suggerimenti di Scryfall)
     function disegnaGiocatoriNuova() {
+      // Menu dei mazzi salvati (solo se ce n'è almeno uno con il comandante scelto)
+      const mazziPronti = mazzi.filter(cartaComandante);
+      const menuMazzi = (i, m) => !mazziPronti.length ? '' : `
+        <select class="selettore scegli-mazzo" data-i="${i}" data-m="${m}"
+                title="Usa un mazzo salvato" aria-label="Usa un mazzo salvato">
+          <option value="">🃏</option>
+          ${mazziPronti.map(mazzo => `<option value="${mazzo.id}">${pulisci(mazzo.nome)}${
+            mazzo.proprietario ? ` (${pulisci(mazzo.proprietario)})` : ''}</option>`).join('')}
+        </select>`;
+
       giocatoriNuova.innerHTML = postiScelti().map((posto, i) => {
         const titolo = scelta.modalita === 'thg' ? `<div class="titolo-squadra">Squadra ${i + 1}</div>` : '';
         const righe = posto.membri.map((nome, m) => {
@@ -1714,6 +1725,7 @@
                      placeholder="Comandante…" autocomplete="off" spellcheck="false"
                      title="${statoNome === 'da-verificare' ? 'Comandante non trovato su Scryfall' : ''}"
                      data-bozza="1" data-i="${i}" data-m="${m}" data-campo="comandanti" aria-label="Comandante">
+              ${menuMazzi(i, m)}
             </div>`;
         }).join('');
         return titolo + righe;
@@ -1738,6 +1750,22 @@
 
     giocatoriNuova.addEventListener('change', evento => {
       const campo = evento.target;
+
+      // Scelta di un mazzo salvato: compila nome del proprietario e comandante
+      if (campo.classList.contains('scegli-mazzo')) {
+        const mazzo = mazzi.find(x => x.id === campo.value);
+        if (!mazzo) return;
+        const comandante = cartaComandante(mazzo);
+        const posto = bozza.posti[campo.dataset.i];
+        const m = campo.dataset.m;
+        if (mazzo.proprietario) posto.membri[m] = mazzo.proprietario;
+        posto.comandanti[m] = comandante.nome;
+        posto.identita[m] = [...comandante.identita];
+        posto.arte[m] = comandante.arte;
+        disegnaGiocatoriNuova();
+        return;
+      }
+
       if (campo.dataset.campo !== 'comandanti') return;
       chiudiTendina();
       if (campo.value.trim() && !bozza.posti[campo.dataset.i].identita[campo.dataset.m]) {
