@@ -460,7 +460,7 @@
     }
     .finestra[hidden] { display: none; }
 
-    .pannello-dadi {
+    .pannello-dadi, .pannello {
       position: relative;
       width: 100%;
       max-width: 400px;
@@ -471,7 +471,84 @@
       padding: 20px 20px 16px;
       box-shadow: 0 0 40px rgba(180, 140, 232, .45);
     }
-    .pannello-dadi h2 { margin: 0 0 14px; font-size: 1.2rem; color: var(--lavanda); }
+    .pannello-dadi h2, .pannello h2 { margin: 0 0 14px; font-size: 1.2rem; color: var(--lavanda); }
+
+    /* ---------- Fine partita ---------- */
+    .scelta-vincitore { display: grid; gap: 10px; margin: 4px 0 16px; }
+
+    .opzione-vincitore {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      text-align: left;
+      background: rgba(255, 255, 255, .05);
+      border: 2px solid color-mix(in srgb, var(--accento) 40%, transparent);
+      transition: background .15s, box-shadow .15s, border-color .15s;
+    }
+    .opzione-vincitore:hover { background: rgba(255, 255, 255, .09); }
+    .opzione-vincitore.scelto {
+      border-color: var(--accento);
+      background: color-mix(in srgb, var(--accento) 18%, transparent);
+      box-shadow: var(--alone);
+    }
+    .nome-vincitore { font-weight: 700; }
+    .comandante-vincitore { font-size: .85rem; font-style: italic; color: var(--accento); }
+
+    .azioni { display: flex; justify-content: center; gap: 10px; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .nota { color: var(--testo-tenue); font-size: .8rem; margin: 12px 0 0; }
+
+    /* ---------- Registro partite ---------- */
+    .pannello-largo {
+      max-width: 680px;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .schede-registro { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    #contenuto-registro { text-align: left; }
+
+    .registro-vuoto { text-align: center; color: var(--testo-tenue); padding: 20px 0; }
+
+    .classifica { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    .classifica th {
+      text-align: left;
+      color: var(--testo-tenue);
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(180, 140, 232, .25);
+    }
+    .classifica td { padding: 9px 8px; border-bottom: 1px solid rgba(180, 140, 232, .1); }
+    .classifica .numerico { text-align: right; font-variant-numeric: tabular-nums; }
+    .classifica .posizione { width: 36px; }
+    .pips { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+    .pips img { width: 14px; height: 14px; }
+
+    .voce-storico {
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(180, 140, 232, .2);
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    .intestazione-voce {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--testo-tenue);
+      font-size: .8rem;
+      margin-bottom: 6px;
+    }
+    .partecipante { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; padding: 2px 0; }
+    .partecipante.vincitore { color: #ffe38a; font-weight: 700; }
+    .comandante-storico { font-style: italic; font-weight: 400; color: var(--testo-tenue); font-size: .85rem; }
+    .elimina { background: none; font-size: .95rem; opacity: .6; }
+    .elimina:hover { opacity: 1; }
 
     .chiudi {
       position: absolute;
@@ -589,6 +666,8 @@
     <button class="btn" data-modalita="thg">Two-Headed Giant</button>
     <button class="btn" id="chi-inizia">👑 Chi inizia?</button>
     <button class="btn" id="apri-dadi">🎲 Dadi</button>
+    <button class="btn" id="fine-partita">🏆 Fine partita</button>
+    <button class="btn" id="apri-registro">📜 Registro</button>
     <button class="btn" id="nuova-partita">↺ Nuova partita</button>
   </nav>
 
@@ -604,6 +683,34 @@
   <main class="tavolo" id="tavolo"></main>
 
   <div class="avviso" id="avviso"></div>
+
+  <!-- Finestra di fine partita: si sceglie il vincitore -->
+  <div class="finestra" id="finestra-fine" hidden>
+    <div class="pannello" role="dialog" aria-label="Fine partita">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>🏆 Chi ha vinto?</h2>
+      <div class="scelta-vincitore" id="scelta-vincitore"></div>
+      <div class="azioni">
+        <button class="btn" data-chiudi>Annulla</button>
+        <button class="btn attivo" id="salva-partita">Salva partita</button>
+      </div>
+      <p class="nota">Dopo il salvataggio i punteggi si azzerano per la prossima partita.</p>
+    </div>
+  </div>
+
+  <!-- Finestra del registro: classifica giocatori, comandanti e storico -->
+  <div class="finestra" id="finestra-registro" hidden>
+    <div class="pannello pannello-largo" role="dialog" aria-label="Registro partite">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>📜 Registro partite</h2>
+      <div class="schede-registro">
+        <button class="btn" data-scheda="classifica">Giocatori</button>
+        <button class="btn" data-scheda="comandanti">Comandanti</button>
+        <button class="btn" data-scheda="storico">Storico</button>
+      </div>
+      <div id="contenuto-registro"></div>
+    </div>
+  </div>
 
   <!-- Tendina con i suggerimenti dei comandanti (la riempie JavaScript) -->
   <ul class="tendina" id="tendina" hidden></ul>
@@ -1311,7 +1418,201 @@
     // Si chiude anche cliccando fuori dal pannello o premendo Esc
     finestraDadi.addEventListener('click', evento => { if (evento.target === finestraDadi) chiudiDadi(); });
     document.addEventListener('keydown', evento => {
-      if (evento.key === 'Escape') { chiudiDadi(); chiudiMenuSfondo(); }
+      if (evento.key === 'Escape') {
+        document.querySelectorAll('.finestra').forEach(f => { f.hidden = true; });
+        chiudiMenuSfondo();
+      }
+    });
+
+    // Tutte le finestre si chiudono con un pulsante "data-chiudi" o cliccando fuori
+    document.querySelectorAll('.finestra').forEach(finestra =>
+      finestra.addEventListener('click', evento => {
+        if (evento.target === finestra || evento.target.closest('[data-chiudi]')) finestra.hidden = true;
+      }));
+
+    // ---------- Registro delle partite ----------
+    // Le partite concluse si salvano a parte, così "Nuova partita" non le cancella
+    const CHIAVE_REGISTRO = 'commander-hub-registro';
+
+    function caricaRegistro() {
+      try {
+        return JSON.parse(localStorage.getItem(CHIAVE_REGISTRO)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function salvaRegistro() {
+      try { localStorage.setItem(CHIAVE_REGISTRO, JSON.stringify(registro)); } catch (e) { /* vedi salvaStato */ }
+    }
+
+    let registro = caricaRegistro();   // dalla partita più recente alla più vecchia
+
+    const nomePosto = posto => posto.membri.map(n => n.trim() || 'Senza nome').join(' & ');
+
+    // --- Fine partita: scelta del vincitore ---
+    const finestraFine = document.getElementById('finestra-fine');
+    const sceltaVincitore = document.getElementById('scelta-vincitore');
+    const pulsanteSalva = document.getElementById('salva-partita');
+    let vincitoreScelto = null;
+
+    function disegnaSceltaVincitore() {
+      sceltaVincitore.innerHTML = postiInGioco().map((posto, i) => {
+        const comandanti = posto.comandanti.filter(c => c.trim()).join(' & ') || 'Comandante non indicato';
+        return `
+          <button class="opzione-vincitore ${i === vincitoreScelto ? 'scelto' : ''}"
+                  data-vincitore="${i}" style="${stileColori(posto.colori)}">
+            <span class="nome-vincitore">${i === vincitoreScelto ? '🏆 ' : ''}${pulisci(nomePosto(posto))}</span>
+            <span class="comandante-vincitore">${pulisci(comandanti)}</span>
+          </button>`;
+      }).join('');
+      pulsanteSalva.disabled = vincitoreScelto === null;
+    }
+
+    document.getElementById('fine-partita').addEventListener('click', () => {
+      // Se è rimasto in piedi un solo giocatore, lo proponiamo già come vincitore
+      const regole = regoleAttuali();
+      const inPiedi = postiInGioco().map((p, i) => i).filter(i => !eSconfitto(postiInGioco()[i], regole));
+      vincitoreScelto = inPiedi.length === 1 ? inPiedi[0] : null;
+      disegnaSceltaVincitore();
+      finestraFine.hidden = false;
+    });
+
+    sceltaVincitore.addEventListener('click', evento => {
+      const opzione = evento.target.closest('[data-vincitore]');
+      if (!opzione) return;
+      vincitoreScelto = Number(opzione.dataset.vincitore);
+      disegnaSceltaVincitore();
+    });
+
+    pulsanteSalva.addEventListener('click', () => {
+      if (vincitoreScelto === null) return;
+      const posti = postiInGioco();
+      registro.unshift({
+        data: new Date().toISOString(),
+        modalita: stato.modalita,
+        partecipanti: posti.map((posto, i) => ({
+          giocatori: posto.membri.map(n => n.trim() || 'Senza nome'),
+          comandanti: posto.comandanti.map(c => c.trim()),
+          identita: posto.identita.map(x => (x ? [...x] : null)),
+          vincitore: i === vincitoreScelto,
+        })),
+      });
+      salvaRegistro();
+      mostraAvviso(`🏆 Vittoria di ${nomePosto(posti[vincitoreScelto])}! Partita salvata`);
+
+      // Punteggi azzerati, nomi/comandanti/colori restano per la rivincita
+      stato.partite[stato.modalita] = nuovaPartita(stato.modalita, partitaAttuale());
+      aggiorna();
+      finestraFine.hidden = true;
+    });
+
+    // --- Registro: classifiche e storico ---
+    const finestraRegistro = document.getElementById('finestra-registro');
+    const contenutoRegistro = document.getElementById('contenuto-registro');
+    let schedaRegistro = 'classifica';
+
+    // Conta partite giocate e vinte per ogni nome (giocatore o comandante).
+    // "estrai" dice quali nomi prendere da ogni partecipante.
+    function calcolaClassifica(estrai) {
+      const righe = new Map();
+      registro.forEach(partita => partita.partecipanti.forEach(partecipante => {
+        estrai(partecipante).forEach(({ nome, identita }) => {
+          if (!nome) return;
+          const chiave = nome.toLowerCase();   // "marco" e "Marco" sono la stessa persona
+          const riga = righe.get(chiave) || { nome, identita: null, giocate: 0, vinte: 0 };
+          riga.giocate++;
+          if (partecipante.vincitore) riga.vinte++;
+          riga.identita = riga.identita || identita || null;
+          righe.set(chiave, riga);
+        });
+      }));
+      // Prima chi ha più vittorie, poi la percentuale migliore, poi chi ha giocato di più
+      return [...righe.values()].sort((a, b) =>
+        b.vinte - a.vinte || b.vinte / b.giocate - a.vinte / a.giocate || b.giocate - a.giocate);
+    }
+
+    function tabellaClassifica(righe, intestazione) {
+      const medaglie = ['🥇', '🥈', '🥉'];
+      return `
+        <table class="classifica">
+          <thead><tr>
+            <th class="posizione">#</th><th>${intestazione}</th>
+            <th class="numerico">Partite</th><th class="numerico">Vittorie</th><th class="numerico">%</th>
+          </tr></thead>
+          <tbody>${righe.map((riga, n) => `
+            <tr>
+              <td class="posizione">${medaglie[n] || n + 1}</td>
+              <td>${pulisci(riga.nome)}${riga.identita
+                ? `<span class="pips">${(riga.identita.length ? riga.identita : ['C']).map(simboloMana).join('')}</span>` : ''}</td>
+              <td class="numerico">${riga.giocate}</td>
+              <td class="numerico">${riga.vinte}</td>
+              <td class="numerico">${Math.round(riga.vinte / riga.giocate * 100)}%</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function voceStorico(partita, indice) {
+      const data = new Date(partita.data).toLocaleString('it-IT', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      const modalita = partita.modalita === 'thg'
+        ? 'Two-Headed Giant'
+        : `Commander · ${partita.partecipanti.length} giocatori`;
+      const partecipanti = partita.partecipanti.map(p => `
+        <div class="partecipante ${p.vincitore ? 'vincitore' : ''}">
+          <span>${p.vincitore ? '🏆' : '•'} ${pulisci(p.giocatori.join(' & '))}</span>
+          <span class="comandante-storico">${pulisci(p.comandanti.filter(Boolean).join(' & '))}</span>
+        </div>`).join('');
+      return `
+        <div class="voce-storico">
+          <div class="intestazione-voce">
+            <span>${data} · ${modalita}</span>
+            <button class="elimina" data-elimina="${indice}" title="Elimina questa partita">🗑️</button>
+          </div>
+          ${partecipanti}
+        </div>`;
+    }
+
+    function disegnaRegistro() {
+      document.querySelectorAll('[data-scheda]').forEach(b =>
+        b.classList.toggle('attivo', b.dataset.scheda === schedaRegistro));
+
+      if (!registro.length) {
+        contenutoRegistro.innerHTML = `<p class="registro-vuoto">Ancora nessuna partita registrata.<br>
+          A fine partita premi <strong>🏆 Fine partita</strong> per salvarla qui.</p>`;
+        return;
+      }
+      if (schedaRegistro === 'storico') {
+        contenutoRegistro.innerHTML = registro.map(voceStorico).join('');
+      } else if (schedaRegistro === 'comandanti') {
+        const righe = calcolaClassifica(p => p.comandanti.map((nome, m) => ({ nome, identita: p.identita[m] })));
+        contenutoRegistro.innerHTML = righe.length
+          ? tabellaClassifica(righe, 'Comandante')
+          : '<p class="registro-vuoto">Nessun comandante indicato nelle partite salvate.</p>';
+      } else {
+        const righe = calcolaClassifica(p => p.giocatori.map(nome => ({ nome })));
+        contenutoRegistro.innerHTML = tabellaClassifica(righe, 'Giocatore');
+      }
+    }
+
+    document.getElementById('apri-registro').addEventListener('click', () => {
+      disegnaRegistro();
+      finestraRegistro.hidden = false;
+    });
+
+    document.querySelectorAll('[data-scheda]').forEach(b =>
+      b.addEventListener('click', () => {
+        schedaRegistro = b.dataset.scheda;
+        disegnaRegistro();
+      }));
+
+    contenutoRegistro.addEventListener('click', evento => {
+      const pulsante = evento.target.closest('[data-elimina]');
+      if (!pulsante || !confirm('Eliminare questa partita dal registro?')) return;
+      registro.splice(Number(pulsante.dataset.elimina), 1);
+      salvaRegistro();
+      disegnaRegistro();
     });
 
     // ---------- Scintille dello sfondo ----------
