@@ -175,25 +175,49 @@
       box-shadow: 0 0 14px rgba(180, 140, 232, .6);
     }
 
-    .scelta-numero {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 6px;
-      padding: 0 16px 12px;
+    /* Riga sotto la barra che ricorda la partita in corso */
+    .info-partita {
+      margin: -4px 0 8px;
+      text-align: center;
       color: var(--testo-tenue);
-      font-size: .9rem;
+      font-size: .85rem;
     }
-    .scelta-numero[hidden] { display: none; }
-    .scelta-numero span { margin-right: 4px; }
-    .scelta-numero .btn { width: 42px; padding: 6px 0; }
+
+    /* Finestra "Nuova partita" */
+    .gruppo-scelta { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+    .gruppo-scelta .btn-numero { width: 46px; padding: 8px 0; }
+    #finestra-nuova h3 { text-align: center; margin-top: 18px; }
+    .esito-sorteggio { min-height: 1.4em; margin: 10px 0 16px; font-weight: 700; color: #ffe38a; }
+
+    /* Pulsanti fluttuanti in basso a destra */
+    .azioni-rapide {
+      position: fixed;
+      right: 16px;
+      bottom: 20px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .rapido {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      background: linear-gradient(145deg, var(--viola-chiaro), var(--viola));
+      border: 1px solid var(--lavanda);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 16px rgba(180, 140, 232, .5);
+      transition: transform .1s, box-shadow .15s;
+    }
+    .rapido:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 24px rgba(180, 140, 232, .85); }
+    .rapido:active { transform: scale(.92); }
 
     /* ---------- Il tavolo con le schede dei giocatori ---------- */
     .tavolo {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
       gap: 18px;
-      padding: 8px 16px 24px;
+      padding: 8px 16px 90px;   /* spazio in fondo per i pulsanti fluttuanti */
       max-width: 820px;   /* al massimo 2 schede per riga, come un tavolo 2×2 */
       margin: 0 auto;
     }
@@ -859,25 +883,54 @@
   <!-- ===================== SEZIONE SEGNAPUNTI ===================== -->
   <div id="vista-segnapunti">
   <nav class="barra">
-    <button class="btn" data-modalita="commander">Commander</button>
-    <button class="btn" data-modalita="thg">Two-Headed Giant</button>
-    <button class="btn" id="chi-inizia">👑 Chi inizia?</button>
-    <button class="btn" id="apri-dadi">🎲 Dadi</button>
-    <button class="btn" id="fine-partita">🏆 Fine partita</button>
-    <button class="btn" id="apri-registro">📜 Registro</button>
     <button class="btn" id="nuova-partita">↺ Nuova partita</button>
+    <button class="btn" id="apri-registro">📜 Registro</button>
   </nav>
-
-  <!-- Numero di giocatori (visibile solo in modalità Commander) -->
-  <div class="scelta-numero" id="scelta-numero">
-    <span>Giocatori:</span>
-    <button class="btn" data-numero="2">2</button>
-    <button class="btn" data-numero="3">3</button>
-    <button class="btn" data-numero="4">4</button>
-  </div>
+  <p class="info-partita" id="info-partita"></p>
 
   <!-- Qui dentro JavaScript "disegna" le schede dei giocatori -->
   <main class="tavolo" id="tavolo"></main>
+
+  <!-- Pulsanti fluttuanti, sempre a portata di dito durante la partita -->
+  <div class="azioni-rapide">
+    <button class="rapido" id="apri-dadi" title="Lancia un dado" aria-label="Lancia un dado">🎲</button>
+    <button class="rapido" id="fine-partita" title="Fine partita" aria-label="Fine partita">🏆</button>
+  </div>
+  </div>
+
+  <!-- Finestra "Nuova partita": tipo di partita, giocatori e chi inizia -->
+  <div class="finestra" id="finestra-nuova" hidden>
+    <div class="pannello" role="dialog" aria-label="Nuova partita">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>↺ Nuova partita</h2>
+
+      <h3>Tipo di partita</h3>
+      <div class="gruppo-scelta">
+        <button class="btn" data-modalita="commander">Commander</button>
+        <button class="btn" data-modalita="thg">Two-Headed Giant</button>
+      </div>
+
+      <div id="riga-numero">
+        <h3>Giocatori</h3>
+        <div class="gruppo-scelta">
+          <button class="btn btn-numero" data-numero="2">2</button>
+          <button class="btn btn-numero" data-numero="3">3</button>
+          <button class="btn btn-numero" data-numero="4">4</button>
+        </div>
+      </div>
+
+      <h3>Chi inizia?</h3>
+      <div class="gruppo-scelta">
+        <button class="btn" id="chi-inizia">👑 Sorteggia</button>
+      </div>
+      <p class="esito-sorteggio" id="esito-sorteggio"></p>
+
+      <div class="azioni">
+        <button class="btn" data-chiudi>Annulla</button>
+        <button class="btn attivo" id="inizia-partita">Inizia partita</button>
+      </div>
+      <p class="nota">Nomi, comandanti, colori e sfondi restano: ripartono solo i punteggi.</p>
+    </div>
   </div>
 
   <!-- ======================= SEZIONE MAZZI ======================== -->
@@ -1100,33 +1153,11 @@
 
     let stato = caricaStato();
     const tavolo = document.getElementById('tavolo');
-    const sceltaNumero = document.getElementById('scelta-numero');
 
     const partitaAttuale = () => stato.partite[stato.modalita];
     const regoleAttuali = () => REGOLE[stato.modalita];
     // Solo i posti effettivamente in gioco (es. i primi 3 su 4)
     const postiInGioco = () => partitaAttuale().posti.slice(0, partitaAttuale().numero);
-
-    // Cambia il numero di giocatori tenendo i punteggi di chi resta al tavolo
-    function cambiaNumeroGiocatori(nuovo) {
-      const partita = partitaAttuale();
-      const vecchio = partita.numero;
-      if (nuovo === vecchio) return;
-
-      // Chi rientra al tavolo riparte da zero
-      for (let j = vecchio; j < nuovo; j++) {
-        Object.assign(partita.posti[j], { vita: regoleAttuali().vita, veleno: 0, danni: {} });
-      }
-      // Togliamo i danni da comandante dei giocatori usciti (o vecchi, di chi rientra)
-      const primoCambiato = Math.min(vecchio, nuovo);
-      partita.posti.forEach(posto => {
-        Object.keys(posto.danni).forEach(chiave => {
-          if (Number(chiave.split('-')[0]) >= primoCambiato) delete posto.danni[chiave];
-        });
-      });
-      partita.numero = nuovo;
-      aggiorna();
-    }
 
     // Evita che un nome come "<b>" venga interpretato come codice HTML
     function pulisci(testo) {
@@ -1245,17 +1276,13 @@
 
     // Ridisegna tutta la pagina a partire dallo stato attuale
     function disegna() {
-      document.querySelectorAll('[data-modalita]').forEach(b =>
-        b.classList.toggle('attivo', b.dataset.modalita === stato.modalita));
-
       const partita = partitaAttuale();
       const regole = regoleAttuali();
       tavolo.innerHTML = postiInGioco().map((posto, i) => schedaPosto(posto, i, partita, regole)).join('');
 
-      // Il numero di giocatori si sceglie solo in Commander
-      sceltaNumero.hidden = stato.modalita !== 'commander';
-      sceltaNumero.querySelectorAll('[data-numero]').forEach(b =>
-        b.classList.toggle('attivo', Number(b.dataset.numero) === partita.numero));
+      document.getElementById('info-partita').textContent = stato.modalita === 'thg'
+        ? 'Two-Headed Giant · 2 squadre'
+        : `Commander · ${partita.numero} giocatori`;
     }
 
     function aggiorna() {
@@ -1596,26 +1623,64 @@
       if (evento.target === campoAttivo) setTimeout(chiudiTendina, 150);
     });
 
-    // ---------- Barra dei comandi ----------
-    document.querySelectorAll('[data-modalita]').forEach(b =>
-      b.addEventListener('click', () => {
-        stato.modalita = b.dataset.modalita;
-        aggiorna();
-      }));
+    // ---------- Finestra "Nuova partita" ----------
+    // Le scelte restano "in sospeso" finché non premi "Inizia partita"
+    const finestraNuova = document.getElementById('finestra-nuova');
+    const esitoSorteggio = document.getElementById('esito-sorteggio');
+    const scelta = { modalita: 'commander', numero: 4, primo: null };
 
-    sceltaNumero.querySelectorAll('[data-numero]').forEach(b =>
-      b.addEventListener('click', () => cambiaNumeroGiocatori(Number(b.dataset.numero))));
+    // I giocatori della partita che si sta preparando
+    const postiScelti = () => stato.partite[scelta.modalita].posti
+      .slice(0, scelta.modalita === 'commander' ? scelta.numero : 2);
+
+    function disegnaNuovaPartita() {
+      finestraNuova.querySelectorAll('[data-modalita]').forEach(b =>
+        b.classList.toggle('attivo', b.dataset.modalita === scelta.modalita));
+      finestraNuova.querySelectorAll('[data-numero]').forEach(b =>
+        b.classList.toggle('attivo', Number(b.dataset.numero) === scelta.numero));
+      // Il numero di giocatori si sceglie solo in Commander
+      document.getElementById('riga-numero').hidden = scelta.modalita !== 'commander';
+      esitoSorteggio.textContent = scelta.primo === null
+        ? '' : `👑 Inizia ${nomePosto(postiScelti()[scelta.primo])}!`;
+    }
 
     document.getElementById('nuova-partita').addEventListener('click', () => {
-      if (!confirm('Iniziare una nuova partita? Nomi e colori restano, i punteggi si azzerano.')) return;
-      stato.partite[stato.modalita] = nuovaPartita(stato.modalita, partitaAttuale());
-      aggiorna();
+      scelta.modalita = stato.modalita;
+      scelta.numero = stato.partite.commander.numero;
+      scelta.primo = null;
+      disegnaNuovaPartita();
+      finestraNuova.hidden = false;
     });
 
+    finestraNuova.querySelectorAll('[data-modalita]').forEach(b =>
+      b.addEventListener('click', () => {
+        scelta.modalita = b.dataset.modalita;
+        scelta.primo = null;   // cambiano i giocatori: il sorteggio va rifatto
+        disegnaNuovaPartita();
+      }));
+
+    finestraNuova.querySelectorAll('[data-numero]').forEach(b =>
+      b.addEventListener('click', () => {
+        scelta.numero = Number(b.dataset.numero);
+        scelta.primo = null;
+        disegnaNuovaPartita();
+      }));
+
     document.getElementById('chi-inizia').addEventListener('click', () => {
-      const posti = postiInGioco();
-      const scelto = posti[Math.floor(Math.random() * posti.length)];
-      mostraAvviso(`🎲 Inizia ${scelto.membri.join(' & ')}!`);
+      scelta.primo = Math.floor(Math.random() * postiScelti().length);
+      disegnaNuovaPartita();
+    });
+
+    document.getElementById('inizia-partita').addEventListener('click', () => {
+      const precedente = stato.partite[scelta.modalita];
+      if (scelta.modalita === 'commander') precedente.numero = scelta.numero;
+      stato.partite[scelta.modalita] = nuovaPartita(scelta.modalita, precedente);
+      stato.modalita = scelta.modalita;
+      aggiorna();
+      finestraNuova.hidden = true;
+      mostraAvviso(scelta.primo === null
+        ? '↺ Nuova partita iniziata!'
+        : `👑 Si parte! Inizia ${nomePosto(postiInGioco()[scelta.primo])}`);
     });
 
     // ---------- Dadi ----------
