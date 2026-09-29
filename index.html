@@ -32,6 +32,9 @@
 
     * { box-sizing: border-box; }
 
+    /* Qualsiasi elemento con l'attributo "hidden" resta nascosto */
+    [hidden] { display: none !important; }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -552,6 +555,7 @@
 
     .chiudi {
       position: absolute;
+      z-index: 3;
       top: 10px;
       right: 12px;
       background: none;
@@ -618,6 +622,191 @@
       color: var(--testo-tenue);
     }
 
+    /* ---------- Schede delle sezioni (Segnapunti / Mazzi) ---------- */
+    .viste { display: flex; justify-content: center; gap: 6px; padding: 14px 16px 0; }
+    .scheda-vista {
+      background: none;
+      padding: 8px 18px;
+      font-weight: 600;
+      color: var(--testo-tenue);
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .scheda-vista:hover { color: var(--testo); }
+    .scheda-vista.attivo { color: var(--lavanda); border-bottom-color: var(--viola-chiaro); }
+
+    /* ---------- Sezione mazzi ---------- */
+    .vista-mazzi { max-width: 1000px; margin: 0 auto; padding: 8px 16px 32px; }
+    .mazzi-intestazione { display: flex; justify-content: center; padding: 14px 0 18px; }
+
+    .griglia-mazzi {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .griglia-mazzi .registro-vuoto { grid-column: 1 / -1; }
+
+    /* Ogni mazzo è una "tessera" con l'illustrazione del comandante */
+    .tessera-mazzo {
+      min-height: 170px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 2px;
+      padding: 14px;
+      text-align: left;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      background:
+        linear-gradient(180deg, rgba(20, 8, 38, .05), rgba(20, 8, 38, .92) 75%) padding-box,
+        var(--immagine, linear-gradient(rgb(58, 30, 98), rgb(24, 11, 44))) center 25% / cover padding-box,
+        var(--bordo) border-box;
+      box-shadow: var(--alone);
+      transition: transform .15s;
+    }
+    .tessera-mazzo:hover { transform: translateY(-3px); }
+    .tessera-mazzo .pips { margin: 0 0 auto; }
+    .tessera-nome { font-weight: 700; font-size: 1.05rem; }
+    .tessera-info { font-size: .82rem; color: var(--testo-tenue); }
+
+    /* Campi dell'editor */
+    .campo {
+      display: block;
+      text-align: left;
+      font-size: .85rem;
+      color: var(--testo-tenue);
+      margin-bottom: 12px;
+    }
+    .campo input, .campo textarea {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, .25);
+      border: 1px solid rgba(180, 140, 232, .3);
+      border-radius: 10px;
+      color: var(--testo);
+      font: inherit;
+      font-size: .95rem;
+    }
+    .campo textarea { font-family: Consolas, "Courier New", monospace; font-size: .85rem; resize: vertical; }
+    .campo input:focus, .campo textarea:focus { outline: none; border-color: var(--viola-chiaro); }
+    .nota-sinistra { text-align: left; margin: 0 0 8px; }
+
+    .stato-import { min-height: 1.4em; margin: 4px 0 12px; font-size: .88rem; color: var(--testo-tenue); text-align: left; }
+    .stato-import.errore { color: var(--pericolo); }
+
+    /* Dettaglio di un mazzo */
+    .pannello-mazzo { max-width: 880px; text-align: left; }
+
+    .banner-mazzo {
+      margin: -20px -20px 16px;
+      min-height: 170px;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px 20px;
+      border-radius: 18px 18px 0 0;
+      background:
+        linear-gradient(180deg, rgba(30, 14, 54, 0) 20%, rgb(40, 20, 72)),
+        var(--immagine, linear-gradient(rgb(58, 30, 98), rgb(40, 20, 72))) center 25% / cover;
+    }
+    .banner-mazzo h2 { margin: 0; text-align: left; font-size: 1.5rem; color: #fff; }
+    .banner-info { color: var(--testo-tenue); font-size: .9rem; }
+
+    .riepilogo { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .dato {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(180, 140, 232, .2);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: .88rem;
+    }
+    .dato strong { font-size: 1.05rem; color: #fff; }
+
+    .selettore {
+      max-width: 220px;
+      padding: 4px 6px;
+      background: rgb(30, 14, 54);
+      color: var(--testo);
+      border: 1px solid rgba(180, 140, 232, .35);
+      border-radius: 8px;
+      font: inherit;
+      font-size: .88rem;
+    }
+
+    .avvisi-mazzo { font-size: .87rem; margin-bottom: 4px; }
+    .avvisi-mazzo p { margin: 4px 0; }
+    .avviso-ok { color: #7fe0a4; }
+    .avviso-problema { color: #ffb4c6; }
+
+    .pannello h3 {
+      margin: 16px 0 8px;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--testo-tenue);
+    }
+
+    /* Curva di mana: una colonna per ogni costo */
+    .curva { display: flex; align-items: flex-end; gap: 6px; height: 120px; }
+    .barra-curva {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: .75rem;
+      color: var(--testo-tenue);
+    }
+    .barra-curva .colonna {
+      width: 100%;
+      min-height: 2px;
+      margin-bottom: 4px;
+      border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, var(--viola-chiaro), var(--viola));
+    }
+    .barra-curva .conteggio { color: #fff; font-weight: 600; margin-bottom: 2px; }
+
+    /* Lista delle carte divisa per tipo, su più colonne */
+    .lista-carte { columns: 3 220px; column-gap: 24px; margin-top: 8px; }
+    .gruppo-carte { break-inside: avoid; margin-bottom: 14px; }
+    .gruppo-carte h3 { margin-top: 0; }
+    .gruppo-carte ul { list-style: none; margin: 0; padding: 0; }
+    .gruppo-carte li { padding: 3px 6px; font-size: .88rem; border-radius: 6px; cursor: pointer; }
+    .gruppo-carte li:hover { background: rgba(180, 140, 232, .18); }
+    .gruppo-carte .quantita { display: inline-block; min-width: 20px; color: var(--testo-tenue); }
+    .gruppo-carte li.problema { color: #ffb4c6; }
+    .gruppo-carte li.comandante-mazzo { color: #ffe38a; font-weight: 700; }
+
+    .azioni-mazzo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(180, 140, 232, .2);
+    }
+
+    .anteprima {
+      position: fixed;
+      z-index: 30;
+      width: 240px;
+      border-radius: 12px;
+      pointer-events: none;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+    }
+    .carta-grande {
+      max-width: min(90vw, 420px);
+      max-height: 85vh;
+      border-radius: 18px;
+      cursor: pointer;
+      box-shadow: 0 0 40px rgba(180, 140, 232, .5);
+    }
+
     footer {
       text-align: center;
       color: var(--testo-tenue);
@@ -658,9 +847,17 @@
       <img src="https://svgs.scryfall.io/card-symbols/R.svg" alt="Rosso">
       <img src="https://svgs.scryfall.io/card-symbols/G.svg" alt="Verde">
     </div>
-    <p class="sottotitolo">Segnapunti per le partite del gruppo</p>
+    <p class="sottotitolo">Il punto di ritrovo del gruppo Commander</p>
   </header>
 
+  <!-- Le due sezioni del sito -->
+  <nav class="viste">
+    <button class="scheda-vista attivo" data-vista="segnapunti">🎯 Segnapunti</button>
+    <button class="scheda-vista" data-vista="mazzi">🃏 Mazzi</button>
+  </nav>
+
+  <!-- ===================== SEZIONE SEGNAPUNTI ===================== -->
+  <div id="vista-segnapunti">
   <nav class="barra">
     <button class="btn" data-modalita="commander">Commander</button>
     <button class="btn" data-modalita="thg">Two-Headed Giant</button>
@@ -681,8 +878,59 @@
 
   <!-- Qui dentro JavaScript "disegna" le schede dei giocatori -->
   <main class="tavolo" id="tavolo"></main>
+  </div>
+
+  <!-- ======================= SEZIONE MAZZI ======================== -->
+  <div class="vista-mazzi" id="vista-mazzi" hidden>
+    <div class="mazzi-intestazione">
+      <button class="btn attivo" id="nuovo-mazzo">＋ Nuovo mazzo</button>
+    </div>
+    <div class="griglia-mazzi" id="griglia-mazzi"></div>
+  </div>
 
   <div class="avviso" id="avviso"></div>
+
+  <!-- Finestra per creare o modificare un mazzo incollando la lista -->
+  <div class="finestra" id="finestra-editor" hidden>
+    <div class="pannello pannello-largo" role="dialog" aria-label="Mazzo">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2 id="titolo-editor">Nuovo mazzo</h2>
+      <label class="campo">Nome del mazzo
+        <input id="editor-nome" maxlength="50" placeholder="Es. Vampiri all'attacco">
+      </label>
+      <label class="campo">Proprietario
+        <input id="editor-proprietario" maxlength="30" placeholder="Es. Marco">
+      </label>
+      <label class="campo">Lista delle carte
+        <textarea id="editor-lista" rows="12" spellcheck="false"
+                  placeholder="Commander&#10;1 Edgar Markov&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Arcane Signet&#10;30 Swamp&#10;…"></textarea>
+      </label>
+      <p class="nota nota-sinistra">
+        Incolla la lista esportata da Moxfield, Archidekt o scritta a mano: una carta per riga,
+        con il numero di copie davanti e il nome in inglese. Per indicare il comandante metti la sua riga
+        sotto il titolo <strong>Commander</strong> (oppure sceglilo dopo, dal mazzo).
+      </p>
+      <div class="stato-import" id="stato-import"></div>
+      <div class="azioni">
+        <button class="btn" data-chiudi>Annulla</button>
+        <button class="btn attivo" id="salva-mazzo">Importa e salva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finestra con il dettaglio di un mazzo (la riempie JavaScript) -->
+  <div class="finestra" id="finestra-mazzo" hidden>
+    <div class="pannello pannello-largo pannello-mazzo" role="dialog" aria-label="Dettaglio mazzo"
+         id="contenuto-mazzo"></div>
+  </div>
+
+  <!-- Una carta mostrata in grande (si chiude cliccando) -->
+  <div class="finestra" id="finestra-carta" hidden>
+    <img class="carta-grande" id="immagine-carta" alt="" data-chiudi>
+  </div>
+
+  <!-- Anteprima della carta quando passi il mouse su un nome -->
+  <img class="anteprima" id="anteprima" alt="" hidden>
 
   <!-- Finestra di fine partita: si sceglie il vincitore -->
   <div class="finestra" id="finestra-fine" hidden>
@@ -1420,6 +1668,7 @@
     document.addEventListener('keydown', evento => {
       if (evento.key === 'Escape') {
         document.querySelectorAll('.finestra').forEach(f => { f.hidden = true; });
+        document.getElementById('anteprima').hidden = true;
         chiudiMenuSfondo();
       }
     });
@@ -1427,7 +1676,10 @@
     // Tutte le finestre si chiudono con un pulsante "data-chiudi" o cliccando fuori
     document.querySelectorAll('.finestra').forEach(finestra =>
       finestra.addEventListener('click', evento => {
-        if (evento.target === finestra || evento.target.closest('[data-chiudi]')) finestra.hidden = true;
+        if (evento.target === finestra || evento.target.closest('[data-chiudi]')) {
+          finestra.hidden = true;
+          document.getElementById('anteprima').hidden = true;
+        }
       }));
 
     // ---------- Registro delle partite ----------
@@ -1613,6 +1865,465 @@
       registro.splice(Number(pulsante.dataset.elimina), 1);
       salvaRegistro();
       disegnaRegistro();
+    });
+
+    // =================================================================
+    //  MAZZI
+    // =================================================================
+    const CHIAVE_MAZZI = 'commander-hub-mazzi';
+
+    function caricaMazzi() {
+      try {
+        return JSON.parse(localStorage.getItem(CHIAVE_MAZZI)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function salvaMazzi() {
+      try {
+        localStorage.setItem(CHIAVE_MAZZI, JSON.stringify(mazzi));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    let mazzi = caricaMazzi();
+
+    // ---------- Cambio di sezione (Segnapunti / Mazzi) ----------
+    function mostraVista(nome) {
+      document.getElementById('vista-segnapunti').hidden = nome !== 'segnapunti';
+      document.getElementById('vista-mazzi').hidden = nome !== 'mazzi';
+      document.querySelectorAll('[data-vista]').forEach(b =>
+        b.classList.toggle('attivo', b.dataset.vista === nome));
+      if (nome === 'mazzi') disegnaMazzi();
+    }
+    document.querySelectorAll('[data-vista]').forEach(b =>
+      b.addEventListener('click', () => mostraVista(b.dataset.vista)));
+
+    // ---------- Lettura della lista incollata ----------
+    // Trasforma righe come "1x Sol Ring (CMM) 410 *F* [Ramp]" in { quantita: 1, nome: "Sol Ring" }
+    function leggiLista(testo) {
+      const carte = [];
+      let sezione = 'mazzo';   // 'comandante', 'mazzo' oppure 'ignora' (sideboard e simili)
+
+      testo.split('\n').forEach(grezza => {
+        const riga = grezza.trim();
+        if (!riga || riga.startsWith('//') || riga.startsWith('#')) return;
+
+        // Una riga senza numero davanti è un titolo di sezione, es. "Commander" o "Sideboard:"
+        if (!/^\d/.test(riga)) {
+          const titolo = riga.replace(/[:\s]+$/, '').toLowerCase();
+          if (['commander', 'commanders', 'comandante', 'comandanti'].includes(titolo)) sezione = 'comandante';
+          else if (['sideboard', 'maybeboard', 'considering', 'tokens'].includes(titolo)) sezione = 'ignora';
+          else sezione = 'mazzo';
+          return;
+        }
+        if (sezione === 'ignora') return;
+
+        const parti = riga.match(/^(\d+)\s*x?\s+(.+)$/i);
+        if (!parti) return;
+        let nome = parti[2];
+        const eComandante = sezione === 'comandante' || /\*CMDR\*|\[commander/i.test(nome);
+        nome = nome
+          .replace(/\[.*?\]/g, '')                  // etichette tra quadre: [Ramp]
+          .replace(/\*[^*]*\*/g, '')                // segni tra asterischi: *F*, *CMDR*
+          .replace(/\s+\([^)]+\)(\s+\S+)?\s*$/, '') // espansione e numero: (CMM) 410
+          .trim();
+        if (nome) carte.push({ quantita: Number(parti[1]), nome, eComandante });
+      });
+      return carte;
+    }
+
+    // ---------- Categorie delle carte ----------
+    const ORDINE_TIPI = ['Comandante', 'Creature', 'Planeswalker', 'Battaglie', 'Istantanei',
+                         'Stregonerie', 'Artefatti', 'Incantesimi', 'Terre', 'Altro'];
+
+    function categoria(tipo) {
+      if (/Creature/.test(tipo)) return 'Creature';
+      if (/Planeswalker/.test(tipo)) return 'Planeswalker';
+      if (/Battle/.test(tipo)) return 'Battaglie';
+      if (/Land/.test(tipo)) return 'Terre';
+      if (/Instant/.test(tipo)) return 'Istantanei';
+      if (/Sorcery/.test(tipo)) return 'Stregonerie';
+      if (/Artifact/.test(tipo)) return 'Artefatti';
+      if (/Enchantment/.test(tipo)) return 'Incantesimi';
+      return 'Altro';
+    }
+
+    // Tiene solo le informazioni di Scryfall che ci servono
+    function datiCarta(carta) {
+      const faccia = carta.card_faces?.[0];
+      const immagini = carta.image_uris || faccia?.image_uris || {};
+      const tipo = (carta.type_line || '').split('//')[0];
+      const testo = carta.oracle_text || faccia?.oracle_text || '';
+      return {
+        nome: carta.name,
+        tipo: categoria(tipo),
+        cmc: Math.floor(carta.cmc || 0),
+        identita: carta.color_identity || [],
+        immagine: immagini.normal || null,
+        arte: immagini.art_crop || null,
+        puoComandare: (/Legendary/.test(tipo) && /Creature/.test(tipo)) || /can be your commander/i.test(testo),
+        // Terre base e carte come "Relentless Rats" si possono mettere in più copie
+        illimitata: /Basic Land/.test(tipo) || /any number of cards named/i.test(testo),
+      };
+    }
+
+    const pausa = ms => new Promise(risolvi => setTimeout(risolvi, ms));
+
+    // Chiede a Scryfall i dati di tutte le carte, 75 alla volta (il massimo consentito)
+    async function risolviCarte(nomi, avanzamento) {
+      const trovate = new Map();
+      for (let k = 0; k < nomi.length; k += 75) {
+        const blocco = nomi.slice(k, k + 75);
+        const risposta = await fetch('https://api.scryfall.com/cards/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers: blocco.map(name => ({ name })) }),
+        });
+        if (!risposta.ok) throw new Error('Scryfall non risponde, riprova tra poco');
+        const dati = await risposta.json();
+        dati.data.forEach(carta => {
+          const info = datiCarta(carta);
+          // Una carta a due facce si può cercare anche con il nome della sola prima faccia
+          trovate.set(carta.name.toLowerCase(), info);
+          carta.card_faces?.forEach(f => trovate.set(f.name.toLowerCase(), info));
+        });
+        avanzamento(Math.min(k + 75, nomi.length), nomi.length);
+        await pausa(120);   // Scryfall chiede di non fare richieste troppo ravvicinate
+      }
+      return trovate;
+    }
+
+    async function importaCarte(testo, avanzamento) {
+      // Uniamo le righe ripetute della stessa carta
+      const perNome = new Map();
+      leggiLista(testo).forEach(r => {
+        const chiave = r.nome.toLowerCase();
+        const esistente = perNome.get(chiave);
+        if (esistente) {
+          esistente.quantita += r.quantita;
+          esistente.eComandante ||= r.eComandante;
+        } else {
+          perNome.set(chiave, { ...r });
+        }
+      });
+
+      const richieste = [...perNome.values()];
+      const trovate = await risolviCarte(richieste.map(r => r.nome), avanzamento);
+      const carte = [];
+      const mancanti = [];
+      let comandante = null;
+
+      richieste.forEach(r => {
+        const carta = trovate.get(r.nome.toLowerCase());
+        if (!carta) { mancanti.push(r.nome); return; }
+        carte.push({ ...carta, quantita: r.quantita });
+        if (r.eComandante && !comandante) comandante = carta.nome;
+      });
+
+      // Se il comandante non è indicato ma c'è una sola carta che può esserlo, è lei
+      if (!comandante) {
+        const candidati = carte.filter(c => c.puoComandare);
+        if (candidati.length === 1) comandante = candidati[0].nome;
+      }
+      return { carte, comandante, mancanti };
+    }
+
+    const contaCarte = mazzo => mazzo.carte.reduce((somma, c) => somma + c.quantita, 0);
+    const cartaComandante = mazzo => mazzo.carte.find(c => c.nome === mazzo.comandante) || null;
+    const pipsIdentita = identita =>
+      `<span class="pips">${(identita.length ? identita : ['C']).map(simboloMana).join('')}</span>`;
+
+    // ---------- Griglia dei mazzi ----------
+    function disegnaMazzi() {
+      const griglia = document.getElementById('griglia-mazzi');
+      if (!mazzi.length) {
+        griglia.innerHTML = `<p class="registro-vuoto">Nessun mazzo ancora.<br>
+          Premi <strong>＋ Nuovo mazzo</strong> e incolla la lista delle carte.</p>`;
+        return;
+      }
+      griglia.innerHTML = mazzi.map(mazzo => {
+        const comandante = cartaComandante(mazzo);
+        const identita = comandante ? comandante.identita : [];
+        const arte = sfondoSicuro(comandante?.arte);
+        return `
+          <button class="tessera-mazzo" data-mazzo="${mazzo.id}"
+                  style="${stileColori(identita.length ? identita : ['C'])} ${arte ? `--immagine: url('${arte}');` : ''}">
+            ${pipsIdentita(identita)}
+            <span class="tessera-nome">${pulisci(mazzo.nome)}</span>
+            <span class="tessera-info">${pulisci(comandante ? comandante.nome : 'Comandante non scelto')}</span>
+            <span class="tessera-info">${mazzo.proprietario ? `di ${pulisci(mazzo.proprietario)} · ` : ''}${contaCarte(mazzo)} carte</span>
+          </button>`;
+      }).join('');
+    }
+
+    document.getElementById('griglia-mazzi').addEventListener('click', evento => {
+      const tessera = evento.target.closest('[data-mazzo]');
+      if (tessera) apriMazzo(tessera.dataset.mazzo);
+    });
+
+    // ---------- Editor: nuovo mazzo o modifica ----------
+    const finestraEditor = document.getElementById('finestra-editor');
+    const editorNome = document.getElementById('editor-nome');
+    const editorProprietario = document.getElementById('editor-proprietario');
+    const editorLista = document.getElementById('editor-lista');
+    const statoImport = document.getElementById('stato-import');
+    const pulsanteSalvaMazzo = document.getElementById('salva-mazzo');
+    let mazzoInModifica = null;
+
+    function apriEditor(mazzo) {
+      mazzoInModifica = mazzo || null;
+      document.getElementById('titolo-editor').textContent = mazzo ? 'Modifica mazzo' : 'Nuovo mazzo';
+      editorNome.value = mazzo ? mazzo.nome : '';
+      editorProprietario.value = mazzo ? mazzo.proprietario : '';
+      editorLista.value = mazzo ? mazzo.testo : '';
+      statoImport.textContent = '';
+      statoImport.className = 'stato-import';
+      pulsanteSalvaMazzo.disabled = false;
+      finestraEditor.hidden = false;
+      editorNome.focus();
+    }
+
+    document.getElementById('nuovo-mazzo').addEventListener('click', () => apriEditor(null));
+
+    function erroreImport(messaggio) {
+      statoImport.textContent = messaggio;
+      statoImport.className = 'stato-import errore';
+    }
+
+    pulsanteSalvaMazzo.addEventListener('click', async () => {
+      const testo = editorLista.value;
+      if (!leggiLista(testo).length) {
+        erroreImport('La lista è vuota: scrivi almeno una carta, es. "1 Sol Ring"');
+        return;
+      }
+
+      pulsanteSalvaMazzo.disabled = true;
+      statoImport.className = 'stato-import';
+      try {
+        const risultato = await importaCarte(testo, (fatte, totale) => {
+          statoImport.textContent = `Cerco le carte su Scryfall… ${fatte}/${totale}`;
+        });
+        if (!risultato.carte.length) {
+          throw new Error('Nessuna carta trovata su Scryfall: controlla che i nomi siano in inglese');
+        }
+        // In modifica, se il comandante scelto a mano è ancora nel mazzo lo teniamo
+        if (!risultato.comandante && mazzoInModifica?.comandante
+            && risultato.carte.some(c => c.nome === mazzoInModifica.comandante)) {
+          risultato.comandante = mazzoInModifica.comandante;
+        }
+
+        const mazzo = {
+          id: mazzoInModifica ? mazzoInModifica.id : Date.now().toString(36),
+          nome: editorNome.value.trim() || 'Mazzo senza nome',
+          proprietario: editorProprietario.value.trim(),
+          testo,
+          ...risultato,
+        };
+        const posizione = mazzi.findIndex(m => m.id === mazzo.id);
+        if (posizione >= 0) mazzi[posizione] = mazzo;
+        else mazzi.push(mazzo);
+        if (!salvaMazzi()) mostraAvviso('Spazio di salvataggio pieno: il mazzo sparirà chiudendo la pagina');
+
+        finestraEditor.hidden = true;
+        disegnaMazzi();
+        apriMazzo(mazzo.id);
+      } catch (e) {
+        erroreImport(e.message === 'Failed to fetch'
+          ? 'Scryfall non raggiungibile (sei connesso a internet?)'
+          : e.message);
+      } finally {
+        pulsanteSalvaMazzo.disabled = false;
+      }
+    });
+
+    // ---------- Dettaglio di un mazzo ----------
+    const finestraMazzo = document.getElementById('finestra-mazzo');
+    const contenutoMazzo = document.getElementById('contenuto-mazzo');
+    const anteprima = document.getElementById('anteprima');
+    let mazzoAperto = null;
+
+    function apriMazzo(id) {
+      mazzoAperto = id;
+      disegnaMazzo();
+      finestraMazzo.hidden = false;
+      contenutoMazzo.scrollTop = 0;
+    }
+
+    const mazzoCorrente = () => mazzi.find(m => m.id === mazzoAperto);
+
+    function disegnaMazzo() {
+      const mazzo = mazzoCorrente();
+      if (!mazzo) { finestraMazzo.hidden = true; return; }
+
+      const comandante = cartaComandante(mazzo);
+      const totale = contaCarte(mazzo);
+      const arte = sfondoSicuro(comandante?.arte);
+
+      // Controlli delle regole del Commander
+      const fuoriColori = c => comandante && c.identita.some(colore => !comandante.identita.includes(colore));
+      const troppeCopie = c => c.quantita > 1 && !c.illimitata;
+      const problemi = [];
+      if (totale !== 100) {
+        problemi.push(`Il mazzo ha ${totale} carte: in Commander devono essere esattamente 100, comandante incluso.`);
+      }
+      if (!comandante) problemi.push('Scegli il comandante dal menu 👑 qui sopra.');
+      const quanteFuori = mazzo.carte.filter(fuoriColori).length;
+      if (quanteFuori) problemi.push(`${quanteFuori} carte fuori dai colori del comandante (in rosso nella lista).`);
+      const quanteDoppie = mazzo.carte.filter(troppeCopie).length;
+      if (quanteDoppie) problemi.push(`${quanteDoppie} carte in più copie: in Commander ne è ammessa una sola, tranne le terre base.`);
+      if (mazzo.mancanti.length) {
+        problemi.push(`Non trovate su Scryfall: ${mazzo.mancanti.map(pulisci).join(', ')}.`);
+      }
+
+      // Curva di mana (terre e comandante esclusi)
+      const curva = Array(8).fill(0);
+      let sommaCosti = 0;
+      let magie = 0;
+      mazzo.carte.forEach(c => {
+        if (c.tipo === 'Terre' || c.nome === mazzo.comandante) return;
+        curva[Math.min(7, c.cmc)] += c.quantita;
+        sommaCosti += c.cmc * c.quantita;
+        magie += c.quantita;
+      });
+      const massimo = Math.max(...curva, 1);
+      const barre = curva.map((n, costo) => `
+        <div class="barra-curva">
+          <span class="conteggio">${n || ''}</span>
+          <div class="colonna" style="height: ${n / massimo * 75}%"></div>
+          <span>${costo === 7 ? '7+' : costo}</span>
+        </div>`).join('');
+
+      // Carte raggruppate per tipo
+      const gruppi = new Map(ORDINE_TIPI.map(tipo => [tipo, []]));
+      mazzo.carte.forEach(c => gruppi.get(c.nome === mazzo.comandante ? 'Comandante' : c.tipo).push(c));
+      const terre = gruppi.get('Terre').reduce((s, c) => s + c.quantita, 0);
+      const lista = [...gruppi].filter(([, carte]) => carte.length).map(([tipo, carte]) => {
+        carte.sort((a, b) => a.cmc - b.cmc || a.nome.localeCompare(b.nome));
+        const quante = carte.reduce((s, c) => s + c.quantita, 0);
+        return `
+          <section class="gruppo-carte">
+            <h3>${tipo} (${quante})</h3>
+            <ul>${carte.map(c => `
+              <li data-immagine="${pulisci(c.immagine || '')}"
+                  class="${c.nome === mazzo.comandante ? 'comandante-mazzo' : ''} ${fuoriColori(c) || troppeCopie(c) ? 'problema' : ''}">
+                <span class="quantita">${c.quantita}</span>${pulisci(c.nome)}
+              </li>`).join('')}
+            </ul>
+          </section>`;
+      }).join('');
+
+      const candidati = mazzo.carte.filter(c => c.puoComandare);
+      const opzioniComandante = '<option value="">— scegli —</option>' + candidati.map(c =>
+        `<option value="${pulisci(c.nome)}" ${c.nome === mazzo.comandante ? 'selected' : ''}>${pulisci(c.nome)}</option>`).join('');
+
+      // A quale giocatore del segnapunti assegnare il mazzo
+      const opzioniPosti = postiInGioco().flatMap((posto, i) => posto.membri.map((nome, m) => {
+        const etichetta = stato.modalita === 'thg' ? `Squadra ${i + 1} · ${nome}` : nome;
+        return `<option value="${i}-${m}">${pulisci(etichetta)}</option>`;
+      })).join('');
+
+      contenutoMazzo.innerHTML = `
+        <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+        <div class="banner-mazzo" style="${arte ? `--immagine: url('${arte}');` : ''}">
+          <div>
+            <h2>${pulisci(mazzo.nome)}</h2>
+            <div class="banner-info">
+              ${mazzo.proprietario ? `di ${pulisci(mazzo.proprietario)}` : ''}
+              ${comandante ? pipsIdentita(comandante.identita) : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="riepilogo">
+          <div class="dato"><strong>${totale}</strong>/100 carte ${totale === 100 ? '✓' : ''}</div>
+          <div class="dato">👑 <select class="selettore" id="scelta-comandante-mazzo">${opzioniComandante}</select></div>
+          <div class="dato">Costo medio: <strong>${magie ? (sommaCosti / magie).toFixed(2) : '–'}</strong></div>
+          <div class="dato">Terre: <strong>${terre}</strong></div>
+        </div>
+
+        <div class="avvisi-mazzo">
+          ${problemi.length
+            ? problemi.map(p => `<p class="avviso-problema">⚠️ ${p}</p>`).join('')
+            : '<p class="avviso-ok">✓ Il mazzo rispetta le regole del Commander</p>'}
+        </div>
+
+        <h3>Curva di mana</h3>
+        <div class="curva">${barre}</div>
+
+        <h3>Carte</h3>
+        <div class="lista-carte">${lista}</div>
+
+        <div class="azioni-mazzo">
+          <select class="selettore" id="assegna-posto" aria-label="Giocatore">${opzioniPosti}</select>
+          <button class="btn attivo" id="assegna-mazzo" ${comandante ? '' : 'disabled'}>🎯 Usa in partita</button>
+          <button class="btn" id="modifica-mazzo">✏️ Modifica</button>
+          <button class="btn" id="elimina-mazzo">🗑️ Elimina</button>
+        </div>`;
+    }
+
+    // Scelta del comandante dal menu
+    contenutoMazzo.addEventListener('change', evento => {
+      if (evento.target.id !== 'scelta-comandante-mazzo') return;
+      mazzoCorrente().comandante = evento.target.value || null;
+      salvaMazzi();
+      disegnaMazzo();
+      disegnaMazzi();
+    });
+
+    contenutoMazzo.addEventListener('click', evento => {
+      const mazzo = mazzoCorrente();
+      const voce = evento.target.closest('li[data-immagine]');
+      anteprima.hidden = true;   // qualunque clic chiude l'anteprima volante
+
+      if (voce && voce.dataset.immagine) {
+        // Carta in grande
+        document.getElementById('immagine-carta').src = voce.dataset.immagine;
+        document.getElementById('finestra-carta').hidden = false;
+      } else if (evento.target.id === 'assegna-mazzo') {
+        // Il comandante del mazzo va sulla scheda del giocatore scelto
+        const comandante = cartaComandante(mazzo);
+        const [i, m] = document.getElementById('assegna-posto').value.split('-').map(Number);
+        const posto = partitaAttuale().posti[i];
+        posto.comandanti[m] = comandante.nome;
+        posto.identita[m] = [...comandante.identita];
+        posto.arte[m] = comandante.arte;
+        if (mazzo.proprietario) posto.membri[m] = mazzo.proprietario;
+        aggiornaColoriDaComandanti(posto);
+        aggiorna();
+        finestraMazzo.hidden = true;
+        mostraVista('segnapunti');
+        mostraAvviso(`🎯 ${mazzo.nome} assegnato a ${posto.membri[m]}`);
+      } else if (evento.target.id === 'modifica-mazzo') {
+        finestraMazzo.hidden = true;
+        apriEditor(mazzo);
+      } else if (evento.target.id === 'elimina-mazzo') {
+        if (!confirm(`Eliminare il mazzo "${mazzo.nome}"?`)) return;
+        mazzi = mazzi.filter(m => m.id !== mazzo.id);
+        salvaMazzi();
+        finestraMazzo.hidden = true;
+        disegnaMazzi();
+      }
+    });
+
+    // Anteprima della carta che segue il mouse
+    contenutoMazzo.addEventListener('mouseover', evento => {
+      const voce = evento.target.closest('li[data-immagine]');
+      if (!voce || !voce.dataset.immagine) return;
+      anteprima.src = voce.dataset.immagine;
+      anteprima.hidden = false;
+    });
+    contenutoMazzo.addEventListener('mousemove', evento => {
+      if (anteprima.hidden) return;
+      const x = evento.clientX + 280 > window.innerWidth ? evento.clientX - 260 : evento.clientX + 20;
+      const y = Math.min(evento.clientY - 40, window.innerHeight - 345);
+      anteprima.style.left = `${Math.max(8, x)}px`;
+      anteprima.style.top = `${Math.max(8, y)}px`;
+    });
+    contenutoMazzo.addEventListener('mouseout', evento => {
+      if (evento.target.closest('li[data-immagine]')) anteprima.hidden = true;
     });
 
     // ---------- Scintille dello sfondo ----------
