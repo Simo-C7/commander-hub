@@ -674,6 +674,51 @@
       color: var(--testo-tenue);
     }
 
+    /* ---------- Gruppo condiviso ---------- */
+    .indicatore-gruppo {
+      margin-top: 8px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: .8rem;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(180, 140, 232, .3);
+      color: var(--testo-tenue);
+    }
+    .indicatore-gruppo:hover { color: var(--testo); background: rgba(180, 140, 232, .2); }
+
+    .testo-gruppo { margin: 0 0 14px; font-size: .92rem; }
+    .riga-codice { display: flex; gap: 8px; }
+    .riga-codice input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, .25);
+      border: 1px solid rgba(180, 140, 232, .3);
+      border-radius: 10px;
+      color: var(--testo);
+      font: inherit;
+      font-size: .9rem;
+    }
+    .riga-codice input:focus { outline: none; border-color: var(--viola-chiaro); }
+    .separatore { margin: 14px 0; color: var(--testo-tenue); font-size: .85rem; }
+    .codice-gruppo {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 1.05rem;
+      letter-spacing: .06em;
+      color: #ffe38a;
+      user-select: all;
+    }
+    .link-semplice {
+      margin-top: 14px;
+      background: none;
+      color: var(--testo-tenue);
+      font-size: .85rem;
+      text-decoration: underline;
+    }
+    .link-semplice:hover { color: var(--testo); }
+    #finestra-gruppo .stato-import { text-align: center; margin-bottom: 0; }
+
     /* ---------- Schede delle sezioni (Segnapunti / Mazzi) ---------- */
     .viste { display: flex; justify-content: center; gap: 6px; padding: 14px 16px 0; }
     .scheda-vista {
@@ -900,6 +945,7 @@
       <img src="https://svgs.scryfall.io/card-symbols/G.svg" alt="Verde">
     </div>
     <p class="sottotitolo">Il punto di ritrovo del gruppo Commander</p>
+    <button class="indicatore-gruppo" id="indicatore-gruppo">⚪ Solo questo dispositivo</button>
   </header>
 
   <!-- Le due sezioni del sito -->
@@ -973,6 +1019,45 @@
   </div>
 
   <div class="avviso" id="avviso"></div>
+
+  <!-- Finestra del gruppo: entrare con un codice, crearne uno nuovo o invitare gli amici -->
+  <div class="finestra" id="finestra-gruppo" hidden>
+    <div class="pannello" role="dialog" aria-label="Gruppo">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>👥 Gruppo</h2>
+
+      <!-- Quando NON sei collegato -->
+      <div id="gruppo-scollegato">
+        <p class="testo-gruppo">Collegati al gruppo per condividere partite, registro e mazzi
+          con gli amici, in tempo reale.</p>
+        <div class="riga-codice">
+          <input id="campo-codice" placeholder="Codice del gruppo" autocomplete="off" spellcheck="false">
+          <button class="btn attivo" id="entra-gruppo">Entra</button>
+        </div>
+        <p class="separatore">oppure</p>
+        <button class="btn" id="crea-gruppo">＋ Crea un nuovo gruppo</button>
+        <p class="nota">Creando un gruppo, i dati di questo dispositivo diventano il punto di partenza per tutti.</p>
+        <button class="link-semplice" data-chiudi>Continua senza gruppo (solo questo dispositivo)</button>
+      </div>
+
+      <!-- Quando sei collegato -->
+      <div id="gruppo-collegato" hidden>
+        <p class="testo-gruppo">🟢 Sei collegato al gruppo: le modifiche arrivano a tutti all'istante.</p>
+        <h3>Invita gli amici</h3>
+        <div class="riga-codice">
+          <input id="link-invito" readonly>
+          <button class="btn attivo" id="copia-invito">📋 Copia</button>
+        </div>
+        <p class="nota" id="nota-invito"></p>
+        <h3>Codice del gruppo</h3>
+        <p class="codice-gruppo" id="mostra-codice"></p>
+        <p class="nota">Condividilo solo con gli amici: chi ha il codice può vedere e modificare i dati del gruppo.</p>
+        <button class="link-semplice" id="esci-gruppo">Esci dal gruppo su questo dispositivo</button>
+      </div>
+
+      <p class="stato-import" id="messaggio-gruppo"></p>
+    </div>
+  </div>
 
   <!-- Finestra per creare o modificare un mazzo incollando la lista -->
   <div class="finestra" id="finestra-editor" hidden>
@@ -1174,6 +1259,7 @@
 
     // Restituisce true se il salvataggio è riuscito
     function salvaStato() {
+      notificaCambio('stato');   // se sei in un gruppo, la modifica parte anche verso gli amici
       try {
         localStorage.setItem(CHIAVE_SALVATAGGIO, JSON.stringify(stato));
         return true;
@@ -1923,6 +2009,7 @@
       }
     }
     function salvaRegistro() {
+      notificaCambio('registro');
       try { localStorage.setItem(CHIAVE_REGISTRO, JSON.stringify(registro)); } catch (e) { /* vedi salvaStato */ }
     }
 
@@ -1969,6 +2056,7 @@
       if (vincitoreScelto === null) return;
       const posti = postiInGioco();
       registro.unshift({
+        id: Date.now().toString(36),
         data: new Date().toISOString(),
         modalita: stato.modalita,
         partecipanti: posti.map((posto, i) => ({
@@ -2109,6 +2197,7 @@
       }
     }
     function salvaMazzi() {
+      notificaCambio('mazzi');
       try {
         localStorage.setItem(CHIAVE_MAZZI, JSON.stringify(mazzi));
         return true;
@@ -2579,8 +2668,402 @@
       }
     }
 
+    // =================================================================
+    //  CONDIVISIONE CON IL GRUPPO (Firebase Firestore)
+    // =================================================================
+    // Come funziona: ogni dato (la partita, ogni giocatore, ogni partita del
+    // registro, ogni mazzo) è un "documento" su Firestore, dentro una cartella
+    // che si chiama come il codice del gruppo. Quando qualcosa cambia qui, lo
+    // inviamo; quando cambia sul telefono di un amico, Firestore ce lo manda.
+
+    // Indirizzo del progetto Firebase: non è una password, è pubblico per natura
+    const FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyBJmbG6ThVPCmWt1B-LNy-A4sMtXh23CCI',
+      authDomain: 'commander-hub-61270.firebaseapp.com',
+      projectId: 'commander-hub-61270',
+      storageBucket: 'commander-hub-61270.firebasestorage.app',
+      messagingSenderId: '794240850229',
+      appId: '1:794240850229:web:95ab2e4dbf98c3c39c147c',
+    };
+    const VERSIONE_FIREBASE = '11.0.1';
+    const CHIAVE_GRUPPO = 'commander-hub-gruppo';            // codice salvato su questo dispositivo
+    const CHIAVE_GRUPPO_PROPOSTO = 'commander-hub-gruppo-proposto';
+
+    // "var" invece di "let": queste variabili servono già a notificaCambio,
+    // che può essere chiamata prima che il programma arrivi fin qui
+    var fs = null;             // le funzioni di Firestore, scaricate quando servono
+    var db = null;
+    var codiceGruppo = null;
+    var staccaAscolti = [];
+    var inviati = new Map();   // percorso del documento → testo già inviato o ricevuto
+    var daInviare = new Set(); // cosa è cambiato: 'stato', 'registro', 'mazzi'
+    var timerInvio = null;
+    var ridisegnoInSospeso = false;
+
+    function leggiLocale(chiave) {
+      try { return localStorage.getItem(chiave); } catch (e) { return null; }
+    }
+    function scriviLocale(chiave, valore) {
+      try {
+        if (valore === null) localStorage.removeItem(chiave);
+        else localStorage.setItem(chiave, valore);
+      } catch (e) { /* senza salvataggio locale si va avanti lo stesso */ }
+    }
+
+    async function caricaFirebase() {
+      if (fs) return;
+      const base = `https://www.gstatic.com/firebasejs/${VERSIONE_FIREBASE}`;
+      const [app, firestore] = await Promise.all([
+        import(`${base}/firebase-app.js`),
+        import(`${base}/firebase-firestore.js`),
+      ]);
+      fs = firestore;
+      db = firestore.getFirestore(app.initializeApp(FIREBASE_CONFIG));
+    }
+
+    // ---------- Quali documenti rappresentano i nostri dati ----------
+    const percorso = (...parti) => ['gruppi', codiceGruppo, ...parti].join('/');
+    // Le partite registrate prima di questa versione non avevano un id: lo ricaviamo dalla data
+    const idRegistro = partita => partita.id || partita.data.replace(/[^0-9A-Za-z]/g, '');
+
+    function documenti(tipo) {
+      if (tipo === 'registro') return registro.map(p => ({ percorso: percorso('registro', idRegistro(p)), dati: p }));
+      if (tipo === 'mazzi') return mazzi.map(m => ({ percorso: percorso('mazzi', m.id), dati: m }));
+      // La partita: un documento con le impostazioni e uno per ogni giocatore,
+      // così due amici che toccano schede diverse non si sovrascrivono a vicenda
+      const elenco = [{
+        percorso: percorso('stato', 'meta'),
+        dati: {
+          modalita: stato.modalita,
+          numeri: { commander: stato.partite.commander.numero, thg: stato.partite.thg.numero },
+        },
+      }];
+      ['commander', 'thg'].forEach(modalita => stato.partite[modalita].posti.forEach((posto, i) =>
+        elenco.push({ percorso: percorso('posti', `${modalita}-${i}`), dati: posto })));
+      return elenco;
+    }
+
+    // ---------- Invio delle modifiche ----------
+    function notificaCambio(tipo) {
+      if (!codiceGruppo || !db) return;
+      daInviare.add(tipo);
+      // Aspettiamo un attimo: tanti clic veloci su "+" partono in un solo invio
+      clearTimeout(timerInvio);
+      timerInvio = setTimeout(inviaCambi, 300);
+    }
+
+    async function inviaCambi() {
+      const tipi = [...daInviare];
+      daInviare.clear();
+      const operazioni = [];
+
+      tipi.forEach(tipo => {
+        const presenti = new Set();
+        documenti(tipo).forEach(({ percorso: p, dati }) => {
+          presenti.add(p);
+          const testo = JSON.stringify(dati);
+          if (inviati.get(p) === testo) return;   // non è cambiato
+          inviati.set(p, testo);
+          // Salviamo il dato come testo: Firestore non accetta liste dentro liste
+          operazioni.push(lotto => lotto.set(fs.doc(db, p), { json: testo }));
+        });
+        // Partite o mazzi eliminati qui vanno eliminati anche dal gruppo
+        if (tipo !== 'stato') {
+          const prefisso = percorso(tipo) + '/';
+          [...inviati.keys()].forEach(p => {
+            if (!p.startsWith(prefisso) || presenti.has(p)) return;
+            inviati.delete(p);
+            operazioni.push(lotto => lotto.delete(fs.doc(db, p)));
+          });
+        }
+      });
+
+      // Firestore accetta al massimo 500 operazioni per volta
+      for (let k = 0; k < operazioni.length; k += 400) {
+        const lotto = fs.writeBatch(db);
+        operazioni.slice(k, k + 400).forEach(operazione => operazione(lotto));
+        try {
+          await lotto.commit();
+        } catch (errore) {
+          segnalaErrore(errore);
+        }
+      }
+    }
+
+    // ---------- Ricezione delle modifiche degli amici ----------
+    function ascolta(collezione, applica) {
+      const ferma = fs.onSnapshot(fs.collection(db, percorso(collezione)), istantanea => {
+        let cambiato = false;
+        istantanea.docChanges().forEach(cambio => {
+          if (cambio.doc.metadata.hasPendingWrites) return;   // è una nostra modifica ancora in viaggio
+          const p = percorso(collezione, cambio.doc.id);
+          if (cambio.type === 'removed') {
+            inviati.delete(p);
+            applica(cambio.doc.id, null);
+            cambiato = true;
+            return;
+          }
+          const testo = cambio.doc.data().json;
+          if (inviati.get(p) === testo) return;   // lo abbiamo già
+          inviati.set(p, testo);
+          try {
+            applica(cambio.doc.id, JSON.parse(testo));
+            cambiato = true;
+          } catch (e) {
+            console.warn('Dato del gruppo non leggibile, lo salto:', p, e);
+          }
+        });
+        if (cambiato) dopoAggiornamento(collezione);
+        segnaCollegato();
+      }, errore => {
+        // Se Firebase interrompe l'ascolto (rete assente, problema temporaneo),
+        // ci ricolleghiamo da soli dopo qualche secondo
+        segnalaErrore(errore);
+        const codice = codiceGruppo;
+        setTimeout(() => { if (codiceGruppo === codice) collegaGruppo(codice); }, 5000);
+      });
+      staccaAscolti.push(ferma);
+    }
+
+    function sostituisciInElenco(elenco, id, dati, idDi) {
+      const posizione = elenco.findIndex(x => idDi(x) === id);
+      if (!dati) { if (posizione >= 0) elenco.splice(posizione, 1); }
+      else if (posizione >= 0) elenco[posizione] = dati;
+      else elenco.push(dati);
+    }
+
+    function ascoltaGruppo() {
+      ascolta('stato', (id, dati) => {
+        if (id !== 'meta' || !dati) return;
+        stato.modalita = dati.modalita;
+        stato.partite.commander.numero = dati.numeri.commander;
+        stato.partite.thg.numero = dati.numeri.thg;
+      });
+      ascolta('posti', (id, dati) => {
+        const [modalita, indice] = id.split('-');
+        if (dati && stato.partite[modalita]) stato.partite[modalita].posti[Number(indice)] = dati;
+      });
+      ascolta('registro', (id, dati) => {
+        if (dati && !dati.partecipanti) throw new Error('partita incompleta');
+        sostituisciInElenco(registro, id, dati, idRegistro);
+      });
+      ascolta('mazzi', (id, dati) => {
+        if (dati && !dati.carte) throw new Error('mazzo incompleto');
+        sostituisciInElenco(mazzi, id, dati, m => m.id);
+      });
+    }
+
+    // Dopo una modifica arrivata da un amico: salviamo la copia locale e ridisegniamo
+    function dopoAggiornamento(collezione) {
+      if (collezione === 'stato' || collezione === 'posti') {
+        scriviLocale(CHIAVE_SALVATAGGIO, JSON.stringify(stato));
+        ridisegnaSeLibero();
+      } else if (collezione === 'registro') {
+        registro.sort((a, b) => b.data.localeCompare(a.data));   // dalla più recente
+        scriviLocale(CHIAVE_REGISTRO, JSON.stringify(registro));
+        if (!finestraRegistro.hidden) disegnaRegistro();
+      } else {
+        scriviLocale(CHIAVE_MAZZI, JSON.stringify(mazzi));
+        if (!document.getElementById('vista-mazzi').hidden) disegnaMazzi();
+        if (!finestraMazzo.hidden) disegnaMazzo();
+      }
+    }
+
+    // Se stai scrivendo un nome sul tavolo non ti togliamo il campo da sotto le dita:
+    // ridisegniamo appena esci dal campo
+    function ridisegnaSeLibero() {
+      const attivo = document.activeElement;
+      if (attivo && attivo.tagName === 'INPUT' && tavolo.contains(attivo)) ridisegnoInSospeso = true;
+      else disegna();
+    }
+    tavolo.addEventListener('focusout', () => {
+      if (!ridisegnoInSospeso) return;
+      setTimeout(() => {
+        const attivo = document.activeElement;
+        if (attivo && attivo.tagName === 'INPUT' && tavolo.contains(attivo)) return;
+        ridisegnoInSospeso = false;
+        disegna();
+      }, 200);
+    });
+
+    // ---------- Entrare, creare, uscire ----------
+    function generaCodice() {
+      // 20 caratteri casuali (niente 0/O e 1/I, che si confondono): impossibile da indovinare
+      const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const lettere = [...crypto.getRandomValues(new Uint8Array(20))].map(n => alfabeto[n % alfabeto.length]);
+      return [0, 5, 10, 15].map(k => lettere.slice(k, k + 5).join('')).join('-');
+    }
+
+    // Accetta il codice anche incollato dentro il link d'invito, con spazi o in minuscolo
+    function pulisciCodice(testo) {
+      const daLink = testo.match(/gruppo=([A-Za-z0-9-]+)/);
+      return (daLink ? daLink[1] : testo).trim().toUpperCase().replace(/\s+/g, '');
+    }
+
+    function collegaGruppo(codice) {
+      staccaAscolti.forEach(ferma => ferma());
+      staccaAscolti = [];
+      inviati.clear();
+      codiceGruppo = codice;
+      scriviLocale(CHIAVE_GRUPPO, codice);
+      ascoltaGruppo();
+      aggiornaVistaGruppo();
+    }
+
+    async function creaGruppo() {
+      await caricaFirebase();
+      collegaGruppo(generaCodice());
+      // I dati di questo dispositivo diventano quelli del gruppo
+      ['stato', 'registro', 'mazzi'].forEach(tipo => daInviare.add(tipo));
+      await inviaCambi();
+    }
+
+    async function entraNelGruppo(codice) {
+      await caricaFirebase();
+      codiceGruppo = codice;
+      const meta = await fs.getDoc(fs.doc(db, percorso('stato', 'meta')));
+      if (!meta.exists()) {
+        codiceGruppo = leggiLocale(CHIAVE_GRUPPO);
+        throw new Error('Gruppo non trovato: controlla di aver copiato tutto il codice');
+      }
+      // Su questo dispositivo ora valgono i dati del gruppo
+      registro = [];
+      mazzi = [];
+      scriviLocale(CHIAVE_REGISTRO, '[]');
+      scriviLocale(CHIAVE_MAZZI, '[]');
+      collegaGruppo(codice);
+    }
+
+    function esciDalGruppo() {
+      staccaAscolti.forEach(ferma => ferma());
+      staccaAscolti = [];
+      inviati.clear();
+      codiceGruppo = null;
+      scriviLocale(CHIAVE_GRUPPO, null);
+      aggiornaVistaGruppo();
+    }
+
+    // ---------- Finestra e indicatore del gruppo ----------
+    const finestraGruppo = document.getElementById('finestra-gruppo');
+    const indicatoreGruppo = document.getElementById('indicatore-gruppo');
+    const messaggioGruppo = document.getElementById('messaggio-gruppo');
+
+    function scriviMessaggioGruppo(testo, errore) {
+      messaggioGruppo.textContent = testo;
+      messaggioGruppo.className = 'stato-import' + (errore ? ' errore' : '');
+    }
+
+    const linkInvito = () => `${location.href.split('#')[0]}#gruppo=${codiceGruppo}`;
+
+    function aggiornaVistaGruppo() {
+      const collegato = Boolean(codiceGruppo);
+      document.getElementById('gruppo-scollegato').hidden = collegato;
+      document.getElementById('gruppo-collegato').hidden = !collegato;
+      indicatoreGruppo.textContent = collegato ? '🟡 Collegamento al gruppo…' : '⚪ Solo questo dispositivo';
+      if (!collegato) return;
+      document.getElementById('link-invito').value = linkInvito();
+      document.getElementById('mostra-codice').textContent = codiceGruppo;
+      document.getElementById('nota-invito').textContent = !location.protocol.startsWith('http')
+        ? 'Il link funzionerà quando il sito sarà online. Per ora puoi usare il codice qui sotto.'
+        : 'Manda questo link agli amici: aprendolo entrano direttamente nel gruppo.';
+    }
+
+    function segnaCollegato() {
+      if (codiceGruppo) indicatoreGruppo.textContent = '🟢 Gruppo collegato';
+    }
+
+    function segnalaErrore(errore) {
+      console.error(errore);
+      indicatoreGruppo.textContent = '🔴 Gruppo non raggiungibile';
+      scriviMessaggioGruppo(errore.code === 'permission-denied'
+        ? 'Accesso negato da Firebase: controlla le regole di sicurezza di Firestore.'
+        : 'Non riesco a raggiungere il gruppo. Sei connesso a internet?', true);
+    }
+
+    function apriFinestraGruppo() {
+      scriviMessaggioGruppo('', false);
+      aggiornaVistaGruppo();
+      finestraGruppo.hidden = false;
+    }
+
+    indicatoreGruppo.addEventListener('click', apriFinestraGruppo);
+
+    document.getElementById('entra-gruppo').addEventListener('click', async () => {
+      const codice = pulisciCodice(document.getElementById('campo-codice').value);
+      if (codice.length < 20) {
+        scriviMessaggioGruppo('Il codice è troppo corto: incollalo tutto, trattini compresi.', true);
+        return;
+      }
+      scriviMessaggioGruppo('Mi collego al gruppo…', false);
+      try {
+        await entraNelGruppo(codice);
+        scriviMessaggioGruppo('', false);
+        finestraGruppo.hidden = true;
+        mostraAvviso('👥 Sei entrato nel gruppo!');
+      } catch (errore) {
+        if (errore.code) segnalaErrore(errore);
+        else scriviMessaggioGruppo(errore.message, true);
+      }
+    });
+
+    document.getElementById('crea-gruppo').addEventListener('click', async () => {
+      scriviMessaggioGruppo('Creo il gruppo…', false);
+      try {
+        await creaGruppo();
+        scriviMessaggioGruppo('✓ Gruppo creato! Ora invita gli amici con il link.', false);
+      } catch (errore) {
+        segnalaErrore(errore);
+      }
+    });
+
+    document.getElementById('copia-invito').addEventListener('click', async () => {
+      const campo = document.getElementById('link-invito');
+      try {
+        await navigator.clipboard.writeText(campo.value);
+      } catch (e) {
+        campo.select();   // se il browser non permette di copiare, almeno selezioniamo il testo
+        document.execCommand('copy');
+      }
+      scriviMessaggioGruppo('📋 Link copiato: incollalo nella chat del gruppo.', false);
+    });
+
+    document.getElementById('esci-gruppo').addEventListener('click', () => {
+      if (!confirm('Uscire dal gruppo su questo dispositivo? I dati restano salvati qui, ma non si aggiornano più.')) return;
+      esciDalGruppo();
+      scriviMessaggioGruppo('Sei uscito dal gruppo.', false);
+    });
+
+    // ---------- All'apertura del sito ----------
+    async function avviaCondivisione() {
+      // Link d'invito: l'indirizzo finisce con #gruppo=CODICE
+      const dalLink = new URLSearchParams(location.hash.slice(1)).get('gruppo');
+      if (dalLink) {
+        try { history.replaceState(null, '', location.href.split('#')[0]); } catch (e) { /* non importa */ }
+      }
+      const salvato = leggiLocale(CHIAVE_GRUPPO);
+
+      try {
+        if (dalLink && pulisciCodice(dalLink) !== salvato) {
+          await entraNelGruppo(pulisciCodice(dalLink));
+          mostraAvviso('👥 Benvenuto nel gruppo!');
+        } else if (salvato) {
+          await caricaFirebase();
+          collegaGruppo(salvato);
+        } else if (!leggiLocale(CHIAVE_GRUPPO_PROPOSTO)) {
+          // Prima visita: proponiamo una volta sola di collegarsi a un gruppo
+          scriviLocale(CHIAVE_GRUPPO_PROPOSTO, '1');
+          apriFinestraGruppo();
+        }
+      } catch (errore) {
+        apriFinestraGruppo();
+        if (errore.code) segnalaErrore(errore);
+        else scriviMessaggioGruppo(errore.message, true);
+      }
+    }
+
     creaScintille(40);
     disegna();
+    avviaCondivisione();
   </script>
 </body>
 </html>
