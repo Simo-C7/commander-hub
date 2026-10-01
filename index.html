@@ -58,7 +58,7 @@
       pointer-events: none;
     }
 
-    /* Cinque "nebulose" colorate, una per colore di mana, che si muovono piano */
+    /* Cinque "nebulose" colorate, una per colore di mana, ferme sullo sfondo */
     .nebula {
       position: absolute;
       width: 65vmax;
@@ -66,21 +66,14 @@
       border-radius: 50%;
       background: radial-gradient(circle, color-mix(in srgb, var(--c) 30%, transparent), transparent 65%);
       mix-blend-mode: screen;
-      animation: deriva var(--durata) ease-in-out infinite alternate;
     }
-    .nebula.W { --c: var(--mana-W); --durata: 34s; top: -25%; left: -15%; }
-    .nebula.U { --c: var(--mana-U); --durata: 29s; top: -20%; right: -25%; animation-delay: -8s; }
-    .nebula.B { --c: var(--viola-chiaro); --durata: 38s; top: 30%; left: 20%; animation-delay: -15s; }
-    .nebula.R { --c: var(--mana-R); --durata: 31s; bottom: -30%; right: -15%; animation-delay: -4s; }
-    .nebula.G { --c: var(--mana-G); --durata: 36s; bottom: -25%; left: -25%; animation-delay: -20s; }
+    .nebula.W { --c: var(--mana-W); top: -25%; left: -15%; }
+    .nebula.U { --c: var(--mana-U); top: -20%; right: -25%; }
+    .nebula.B { --c: var(--viola-chiaro); top: 30%; left: 20%; }
+    .nebula.R { --c: var(--mana-R); bottom: -30%; right: -15%; }
+    .nebula.G { --c: var(--mana-G); bottom: -25%; left: -25%; }
 
-    @keyframes deriva {
-      0%   { transform: translate(0, 0) scale(1); }
-      50%  { transform: translate(10vw, -8vh) scale(1.15); }
-      100% { transform: translate(-8vw, 10vh) scale(.9); }
-    }
-
-    /* La ruota dei cinque simboli, grande e quasi trasparente, che gira lentamente */
+    /* La ruota dei cinque simboli, grande e quasi trasparente */
     .ruota {
       position: absolute;
       top: 50%;
@@ -91,7 +84,6 @@
       border: 1px solid rgba(180, 140, 232, .12);
       border-radius: 50%;
       opacity: .09;
-      animation: gira 180s linear infinite;
     }
     .ruota img {
       position: absolute;
@@ -101,30 +93,13 @@
       /* Ogni simbolo viene spostato sul bordo del cerchio con il suo angolo */
       transform: translate(-50%, -50%) rotate(var(--angolo)) translateY(-205%) rotate(calc(-1 * var(--angolo)));
     }
-    @keyframes gira { to { transform: rotate(360deg); } }
 
-    /* Scintille di mana che salgono dal basso */
+    /* Piccole stelle di mana sparse sullo sfondo */
     .scintilla {
       position: absolute;
-      bottom: -10px;
       border-radius: 50%;
       background: var(--c);
       box-shadow: 0 0 8px 2px var(--c);
-      opacity: 0;
-      animation: sale var(--durata) linear infinite;
-      animation-delay: var(--ritardo);
-    }
-    @keyframes sale {
-      0%   { transform: translate(0, 0); opacity: 0; }
-      10%  { opacity: .9; }
-      85%  { opacity: .5; }
-      100% { transform: translate(var(--dx), -110vh); opacity: 0; }
-    }
-
-    /* Chi ha attivato "riduci animazioni" nel sistema vede lo sfondo fermo */
-    @media (prefers-reduced-motion: reduce) {
-      .nebula, .ruota, .scintilla { animation: none; }
-      .scintilla { display: none; }
     }
 
     /* ---------- Intestazione ---------- */
@@ -630,6 +605,7 @@
     .dado:hover { background: rgba(180, 140, 232, .25); box-shadow: 0 0 12px rgba(180, 140, 232, .5); }
     .dado:active { transform: scale(.92); }
     .dado.scelto { background: var(--viola); border-color: var(--viola-chiaro); }
+    .dado-moneta { width: auto; padding: 0 16px; border-radius: 999px; color: #ffe38a; }
 
     /* Il risultato appare dentro un esagono, come la faccia di un dado */
     .risultato {
@@ -649,6 +625,13 @@
     .risultato.rotola { animation: scuoti .1s linear infinite; }
     .risultato.massimo { background: linear-gradient(145deg, #ffe38a, #d9a520); color: #3a2400; }
     .risultato.minimo { background: linear-gradient(145deg, #ff8fb0, #b8284f); }
+    /* La moneta è tonda e dorata */
+    .risultato.moneta {
+      clip-path: circle(50%);
+      font-size: 1.6rem;
+      color: #3a2400;
+      background: radial-gradient(circle at 35% 30%, #fff3c2, #e8b730 55%, #a8780f);
+    }
 
     @keyframes scuoti {
       0%   { transform: rotate(-8deg) scale(.95); }
@@ -967,7 +950,7 @@
 
   <!-- Pulsanti fluttuanti, sempre a portata di dito durante la partita -->
   <div class="azioni-rapide">
-    <button class="rapido" id="apri-dadi" title="Lancia un dado" aria-label="Lancia un dado">🎲</button>
+    <button class="rapido" id="apri-dadi" title="Dadi e moneta" aria-label="Dadi e moneta">🎲</button>
     <button class="rapido" id="fine-partita" title="Fine partita" aria-label="Fine partita">🏆</button>
   </div>
   </div>
@@ -1138,15 +1121,16 @@
 
   <!-- Finestra dei dadi: nascosta finché non premi "Dadi" -->
   <div class="finestra" id="finestra-dadi" hidden>
-    <div class="pannello-dadi" role="dialog" aria-label="Lancia un dado">
+    <div class="pannello-dadi" role="dialog" aria-label="Dadi e moneta">
       <button class="chiudi" id="chiudi-dadi" aria-label="Chiudi">✕</button>
-      <h2>Lancia un dado</h2>
+      <h2>Dadi e moneta</h2>
       <div class="scelta-dadi">
         <button class="dado" data-facce="6">d6</button>
         <button class="dado" data-facce="8">d8</button>
         <button class="dado" data-facce="10">d10</button>
         <button class="dado" data-facce="12">d12</button>
         <button class="dado" data-facce="20">d20</button>
+        <button class="dado dado-moneta" data-moneta title="Lancia una moneta">Moneta</button>
       </div>
       <div class="risultato" id="risultato-dado">?</div>
       <div class="dettaglio" id="dettaglio-dado">Scegli un dado</div>
@@ -1943,27 +1927,42 @@
 
     const tiro = facce => 1 + Math.floor(Math.random() * facce);
 
-    function lanciaDado(facce) {
-      clearInterval(rotolamento);
-      risultatoDado.className = 'risultato rotola';
-      dettaglioDado.textContent = `Lancio un d${facce}…`;
+    // Un lancio è { tipo: 'd20' oppure 'moneta', esito: numero }.
+    // Per la moneta l'esito 1 è Testa e 2 è Croce.
+    // "dalGruppo" vale true quando il lancio l'ha fatto un amico
+    function mostraLancio(lancio, dalGruppo) {
+      const moneta = lancio.tipo === 'moneta';
+      const facce = moneta ? 2 : Number(lancio.tipo.slice(1));
+      const scritta = valore => (moneta ? (valore === 1 ? 'Testa' : 'Croce') : valore);
+      const daChi = dalGruppo ? '👥 Dal gruppo · ' : '';
 
-      // Per un attimo mostriamo numeri a caso, come un dado che rotola
-      rotolamento = setInterval(() => { risultatoDado.textContent = tiro(facce); }, 60);
+      document.querySelectorAll('.dado').forEach(d =>
+        d.classList.toggle('scelto', (d.dataset.facce ? `d${d.dataset.facce}` : 'moneta') === lancio.tipo));
+      clearInterval(rotolamento);
+      risultatoDado.className = 'risultato rotola' + (moneta ? ' moneta' : '');
+      dettaglioDado.textContent = `${daChi}${moneta ? 'Lancio la moneta' : `Lancio un ${lancio.tipo}`}…`;
+
+      // Per un attimo mostriamo risultati a caso, come un dado che rotola
+      rotolamento = setInterval(() => { risultatoDado.textContent = scritta(tiro(facce)); }, 60);
 
       setTimeout(() => {
         clearInterval(rotolamento);
-        const esito = tiro(facce);
-        risultatoDado.textContent = esito;
-        risultatoDado.className = 'risultato'
-          + (esito === facce ? ' massimo' : '')
-          + (esito === 1 ? ' minimo' : '');
-        dettaglioDado.textContent = esito === facce ? `d${facce}: il massimo! 🎉`
-          : esito === 1 ? `d${facce}: il minimo…`
-          : `d${facce}`;
+        const esito = lancio.esito;
+        risultatoDado.textContent = scritta(esito);
+        if (moneta) {
+          risultatoDado.className = 'risultato moneta';
+          dettaglioDado.textContent = `${daChi}Moneta: ${scritta(esito)}`;
+        } else {
+          risultatoDado.className = 'risultato'
+            + (esito === facce ? ' massimo' : '')
+            + (esito === 1 ? ' minimo' : '');
+          dettaglioDado.textContent = daChi + (esito === facce ? `${lancio.tipo}: il massimo! 🎉`
+            : esito === 1 ? `${lancio.tipo}: il minimo…`
+            : lancio.tipo);
+        }
 
         // Teniamo gli ultimi 6 lanci
-        storico.unshift(`d${facce} → ${esito}`);
+        storico.unshift(`${moneta ? 'Moneta' : lancio.tipo} → ${scritta(esito)}`);
         storico.length = Math.min(storico.length, 6);
         storicoDadi.innerHTML = storico.map(s => `<span>${s}</span>`).join('');
       }, 700);
@@ -1971,8 +1970,10 @@
 
     document.querySelectorAll('.dado').forEach(pulsante =>
       pulsante.addEventListener('click', () => {
-        document.querySelectorAll('.dado').forEach(d => d.classList.toggle('scelto', d === pulsante));
-        lanciaDado(Number(pulsante.dataset.facce));
+        const facce = pulsante.dataset.facce ? Number(pulsante.dataset.facce) : 2;
+        const lancio = { tipo: pulsante.dataset.facce ? `d${facce}` : 'moneta', esito: tiro(facce) };
+        inviaLancio(lancio);   // se sei in un gruppo, lo vedono anche gli amici
+        mostraLancio(lancio, false);
       }));
 
     const chiudiDadi = () => { finestraDadi.hidden = true; };
@@ -2644,8 +2645,8 @@
       if (evento.target.closest('li[data-immagine]')) anteprima.hidden = true;
     });
 
-    // ---------- Scintille dello sfondo ----------
-    // Crea tante piccole luci colorate con posizione, velocità e colore casuali
+    // ---------- Stelle dello sfondo ----------
+    // Sparge piccole luci colorate ferme, con posizione, grandezza e colore casuali
     function creaScintille(quante) {
       const sfondo = document.getElementById('sfondo');
       const colori = Object.keys(MANA).filter(c => c !== 'C');
@@ -2653,17 +2654,15 @@
 
       for (let n = 0; n < quante; n++) {
         const scintilla = document.createElement('span');
-        const dimensione = casuale(2, 5);
-        const durata = casuale(12, 28);
+        const dimensione = casuale(2, 4.5);
         scintilla.className = 'scintilla';
         scintilla.style.cssText = `
           left: ${casuale(0, 100)}%;
+          top: ${casuale(0, 100)}%;
           width: ${dimensione}px;
           height: ${dimensione}px;
-          --c: var(--mana-${colori[Math.floor(Math.random() * colori.length)]});
-          --durata: ${durata}s;
-          --ritardo: -${casuale(0, durata)}s;
-          --dx: ${casuale(-60, 60)}px;`;
+          opacity: ${casuale(.25, .75).toFixed(2)};
+          --c: var(--mana-${colori[Math.floor(Math.random() * colori.length)]});`;
         sfondo.appendChild(scintilla);
       }
     }
@@ -2790,6 +2789,16 @@
       }
     }
 
+    // I lanci dei dadi partono subito, senza attesa: devono arrivare a tutti insieme
+    function inviaLancio(lancio) {
+      if (!codiceGruppo || !db) return;
+      const p = percorso('stato', 'lancio');
+      // "id" e "quando" rendono ogni lancio diverso dal precedente, anche con lo stesso risultato
+      const testo = JSON.stringify({ ...lancio, id: Math.random().toString(36).slice(2), quando: Date.now() });
+      inviati.set(p, testo);   // così non lo rimostriamo quando torna indietro da Firebase
+      fs.setDoc(fs.doc(db, p), { json: testo }).catch(segnalaErrore);
+    }
+
     // ---------- Ricezione delle modifiche degli amici ----------
     function ascolta(collezione, applica) {
       const ferma = fs.onSnapshot(fs.collection(db, percorso(collezione)), istantanea => {
@@ -2834,6 +2843,15 @@
 
     function ascoltaGruppo() {
       ascolta('stato', (id, dati) => {
+        // Un amico ha lanciato un dado o la moneta: lo mostriamo anche qui.
+        // I lanci vecchi (es. quando si apre il sito) non li mostriamo.
+        if (id === 'lancio') {
+          if (dati && Date.now() - dati.quando < 30000) {
+            finestraDadi.hidden = false;
+            mostraLancio(dati, true);
+          }
+          return;
+        }
         if (id !== 'meta' || !dati) return;
         stato.modalita = dati.modalita;
         stato.partite.commander.numero = dati.numeri.commander;
