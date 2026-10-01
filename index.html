@@ -769,7 +769,28 @@
 
     /* ---------- Sezione mazzi ---------- */
     .vista-mazzi { max-width: 1000px; margin: 0 auto; padding: 8px 16px 32px; }
-    .mazzi-intestazione { display: flex; justify-content: center; padding: 14px 0 18px; }
+    .mazzi-intestazione {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 0 18px;
+    }
+    .info-mazzi { margin: 0; text-align: center; color: var(--testo-tenue); font-size: .88rem; }
+    .banner-sposta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(255, 227, 138, .08);
+      border: 1px solid rgba(255, 227, 138, .35);
+      font-size: .9rem;
+      text-align: center;
+    }
 
     .griglia-mazzi {
       display: grid;
@@ -1051,7 +1072,13 @@
   <!-- ======================= SEZIONE MAZZI ======================== -->
   <div class="vista-mazzi" id="vista-mazzi" hidden>
     <div class="mazzi-intestazione">
+      <p class="info-mazzi" id="info-mazzi"></p>
       <button class="btn attivo" id="nuovo-mazzo">＋ Nuovo mazzo</button>
+    </div>
+    <!-- Compare se sul dispositivo ci sono mazzi che non sono ancora nell'account -->
+    <div class="banner-sposta" id="banner-sposta" hidden>
+      <span id="testo-sposta"></span>
+      <button class="btn attivo" id="sposta-mazzi">Spostali nel mio account</button>
     </div>
     <div class="griglia-mazzi" id="griglia-mazzi"></div>
   </div>
@@ -2339,6 +2366,8 @@
       }
     }
     function salvaMazzi() {
+      // Con l'account, i mazzi vanno nell'account invece che sul dispositivo o nel gruppo
+      if (mazziDellAccount()) return inviaMazziAccount();
       notificaCambio('mazzi');
       try {
         localStorage.setItem(CHIAVE_MAZZI, JSON.stringify(mazzi));
@@ -2356,7 +2385,10 @@
       document.getElementById('vista-mazzi').hidden = nome !== 'mazzi';
       document.querySelectorAll('[data-vista]').forEach(b =>
         b.classList.toggle('attivo', b.dataset.vista === nome));
-      if (nome === 'mazzi') disegnaMazzi();
+      if (nome === 'mazzi') {
+        aggiornaIntestazioneMazzi();
+        disegnaMazzi();
+      }
       aggiornaSchermoAcceso();
     }
     document.querySelectorAll('[data-vista]').forEach(b =>
@@ -2538,7 +2570,8 @@
       mazzoInModifica = mazzo || null;
       document.getElementById('titolo-editor').textContent = mazzo ? 'Modifica mazzo' : 'Nuovo mazzo';
       editorNome.value = mazzo ? mazzo.nome : '';
-      editorProprietario.value = mazzo ? mazzo.proprietario : '';
+      // Con l'account, il proprietario di un mazzo nuovo sei tu
+      editorProprietario.value = mazzo ? mazzo.proprietario : (profilo ? profilo.nome : '');
       editorLista.value = mazzo ? mazzo.testo : '';
       statoImport.textContent = '';
       statoImport.className = 'stato-import';
@@ -2985,6 +3018,7 @@
       const operazioni = [];
 
       tipi.forEach(tipo => {
+        if (tipo === 'mazzi' && mazziDellAccount()) return;   // i mazzi personali non vanno nel gruppo
         const presenti = new Set();
         documenti(tipo).forEach(({ percorso: p, dati, conContatori }) => {
           presenti.add(p);
@@ -3041,16 +3075,16 @@
           const p = percorso(collezione, cambio.doc.id);
           if (cambio.type === 'removed') {
             inviati.delete(p);
-            applica(cambio.doc.id, null);
-            cambiato = true;
+            if (applica(cambio.doc.id, null) !== false) cambiato = true;
             return;
           }
           const testo = cambio.doc.data().json;
           if (inviati.get(p) === testo) return;   // lo abbiamo già
           inviati.set(p, testo);
           try {
-            applica(cambio.doc.id, JSON.parse(testo));
-            cambiato = true;
+            // "applica" risponde false quando decide di non usare il dato
+            if (applica(cambio.doc.id, JSON.parse(testo)) === false) inviati.delete(p);
+            else cambiato = true;
           } catch (e) {
             console.warn('Dato del gruppo non leggibile, lo salto:', p, e);
           }
@@ -3162,6 +3196,7 @@
         sostituisciInElenco(registro, id, dati, idRegistro);
       });
       ascolta('mazzi', (id, dati) => {
+        if (mazziDellAccount()) return false;   // con l'account si usano i mazzi personali
         if (dati && !dati.carte) throw new Error('mazzo incompleto');
         sostituisciInElenco(mazzi, id, dati, m => m.id);
       });
@@ -3496,6 +3531,8 @@
           finestraAccount.hidden = false;
         }
       }
+      if (mazziDellAccount()) attivaMazziAccount();
+      else tornaAiMazziLocali();
       aggiornaVistaAccount();
     }
 
@@ -3566,6 +3603,7 @@
         profilo = { nome, codiceAmico };
         await fs.setDoc(fs.doc(db, 'utenti', utente.uid), { ...profilo, creato: fs.serverTimestamp() });
         scriviMessaggioAccount('✓ Profilo creato!', false);
+        attivaMazziAccount();
         aggiornaVistaAccount();
       } catch (errore) {
         profilo = null;
@@ -3586,6 +3624,113 @@
       } catch (errore) {
         scriviMessaggioAccount('Non riesco a salvare il nome, riprova.', true);
       }
+    });
+
+    // ---------- Mazzi personali ----------
+    // Con l'account, i mazzi stanno in "utenti/{id}/mazzi/{mazzo}": li ritrovi su
+    // ogni dispositivo. Firebase ci manda l'elenco aggiornato a ogni modifica,
+    // anche quelle fatte da un altro dispositivo.
+    var staccaMazziAccount = null;
+    var inviatiMazzi = new Map();   // id del mazzo → testo già presente nell'account
+
+    function mazziDellAccount() { return Boolean(utente && profilo); }
+    const chiaveCacheMazzi = () => `${CHIAVE_MAZZI}-${utente.uid}`;
+
+    function attivaMazziAccount() {
+      disattivaMazziAccount();
+      // Intanto mostriamo la copia salvata sul dispositivo, poi arriva quella aggiornata
+      try { mazzi = JSON.parse(leggiLocale(chiaveCacheMazzi())) || []; } catch (e) { mazzi = []; }
+      inviatiMazzi.clear();
+      const uid = utente.uid;
+      staccaMazziAccount = fs.onSnapshot(fs.collection(db, 'utenti', uid, 'mazzi'), istantanea => {
+        if (!utente || utente.uid !== uid) return;
+        // L'elenco di Firebase comprende già anche le nostre modifiche appena fatte
+        const nuovi = [];
+        inviatiMazzi.clear();
+        istantanea.docs.forEach(documento => {
+          try {
+            const mazzo = JSON.parse(documento.data().json);
+            if (!mazzo.carte) return;
+            nuovi.push(mazzo);
+            inviatiMazzi.set(documento.id, documento.data().json);
+          } catch (e) { /* mazzo non leggibile: lo saltiamo */ }
+        });
+        mazzi = nuovi.sort((a, b) => a.id.localeCompare(b.id));   // dal più vecchio
+        dopoAggiornamentoMazzi();
+      }, errore => {
+        console.error(errore);
+        mostraAvviso('Non riesco a leggere i mazzi del tuo account');
+      });
+      dopoAggiornamentoMazzi();
+    }
+
+    function disattivaMazziAccount() {
+      if (staccaMazziAccount) staccaMazziAccount();
+      staccaMazziAccount = null;
+    }
+
+    // Uscendo dall'account si torna ai mazzi salvati sul dispositivo
+    function tornaAiMazziLocali() {
+      disattivaMazziAccount();
+      mazzi = caricaMazzi();
+      dopoAggiornamentoMazzi();
+    }
+
+    // Manda all'account solo i mazzi cambiati, e cancella quelli eliminati
+    function inviaMazziAccount() {
+      const lotto = fs.writeBatch(db);
+      let operazioni = 0;
+      const presenti = new Set();
+      mazzi.forEach(mazzo => {
+        presenti.add(mazzo.id);
+        const testo = JSON.stringify(mazzo);
+        if (inviatiMazzi.get(mazzo.id) === testo) return;
+        inviatiMazzi.set(mazzo.id, testo);
+        lotto.set(fs.doc(db, 'utenti', utente.uid, 'mazzi', mazzo.id), { json: testo });
+        operazioni++;
+      });
+      [...inviatiMazzi.keys()].forEach(id => {
+        if (presenti.has(id)) return;
+        inviatiMazzi.delete(id);
+        lotto.delete(fs.doc(db, 'utenti', utente.uid, 'mazzi', id));
+        operazioni++;
+      });
+      if (operazioni) {
+        lotto.commit().catch(errore => {
+          console.error(errore);
+          mostraAvviso('⚠️ Non riesco a salvare i mazzi nel tuo account');
+        });
+      }
+      scriviLocale(chiaveCacheMazzi(), JSON.stringify(mazzi));
+      return true;
+    }
+
+    function dopoAggiornamentoMazzi() {
+      if (mazziDellAccount()) scriviLocale(chiaveCacheMazzi(), JSON.stringify(mazzi));
+      aggiornaIntestazioneMazzi();
+      if (!document.getElementById('vista-mazzi').hidden) disegnaMazzi();
+      if (!finestraMazzo.hidden) disegnaMazzo();
+    }
+
+    // Spiega dove sono salvati i mazzi e propone di spostare quelli del dispositivo
+    function aggiornaIntestazioneMazzi() {
+      const conAccount = mazziDellAccount();
+      document.getElementById('info-mazzi').textContent = conAccount
+        ? '🃏 I mazzi del tuo account: li ritrovi su ogni dispositivo.'
+        : '📱 Questi mazzi sono salvati solo su questo dispositivo. Accedi per averli nel tuo account.';
+      const daSpostare = conAccount ? caricaMazzi().filter(m => !mazzi.some(x => x.id === m.id)) : [];
+      document.getElementById('banner-sposta').hidden = !daSpostare.length;
+      document.getElementById('testo-sposta').textContent = daSpostare.length === 1
+        ? 'Su questo dispositivo c\'è 1 mazzo che non è nel tuo account.'
+        : `Su questo dispositivo ci sono ${daSpostare.length} mazzi che non sono nel tuo account.`;
+    }
+
+    document.getElementById('sposta-mazzi').addEventListener('click', () => {
+      const daSpostare = caricaMazzi().filter(m => !mazzi.some(x => x.id === m.id));
+      mazzi.push(...daSpostare);
+      salvaMazzi();
+      dopoAggiornamentoMazzi();
+      mostraAvviso(`🃏 ${daSpostare.length} ${daSpostare.length === 1 ? 'mazzo spostato' : 'mazzi spostati'} nel tuo account`);
     });
 
     // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
