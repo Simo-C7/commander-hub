@@ -725,6 +725,35 @@
     .link-semplice:hover { color: var(--testo); }
     #finestra-gruppo .stato-import { text-align: center; margin-bottom: 0; }
 
+    /* ---------- Account ---------- */
+    .barra-account { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+    #pulsante-account.collegato { color: var(--lavanda); border-color: var(--viola-chiaro); }
+
+    .pulsante-google {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: #fff;
+      color: #1f1f1f;
+      font-weight: 600;
+      border: none;
+    }
+    .pulsante-google:hover { background: #f1ecfb; }
+
+    .campi-accesso { display: grid; gap: 8px; margin-bottom: 14px; }
+    .campi-accesso input {
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, .25);
+      border: 1px solid rgba(180, 140, 232, .3);
+      border-radius: 10px;
+      color: var(--testo);
+      font: inherit;
+    }
+    .campi-accesso input:focus { outline: none; border-color: var(--viola-chiaro); }
+    #finestra-account .stato-import { text-align: center; margin-bottom: 0; }
+    #finestra-account h3 { text-align: center; }
+
     /* ---------- Schede delle sezioni (Segnapunti / Mazzi) ---------- */
     .viste { display: flex; justify-content: center; gap: 6px; padding: 14px 16px 0; }
     .scheda-vista {
@@ -951,7 +980,10 @@
       <img src="https://svgs.scryfall.io/card-symbols/G.svg" alt="Verde">
     </div>
     <p class="sottotitolo">Il punto di ritrovo del gruppo Commander</p>
-    <button class="indicatore-gruppo" id="indicatore-gruppo">⚪ Solo questo dispositivo</button>
+    <div class="barra-account">
+      <button class="indicatore-gruppo" id="pulsante-account">👤 Accedi</button>
+      <button class="indicatore-gruppo" id="indicatore-gruppo">⚪ Solo questo dispositivo</button>
+    </div>
   </header>
 
   <!-- Le due sezioni del sito -->
@@ -1025,6 +1057,66 @@
   </div>
 
   <div class="avviso" id="avviso"></div>
+
+  <!-- Finestra dell'account: accesso, registrazione e profilo -->
+  <div class="finestra" id="finestra-account" hidden>
+    <div class="pannello" role="dialog" aria-label="Account">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+
+      <!-- Quando NON hai fatto l'accesso -->
+      <div id="account-ospite">
+        <h2>👤 Il tuo account</h2>
+        <p class="testo-gruppo">Accedi per avere i tuoi mazzi, le tue statistiche e i tuoi amici
+          su qualsiasi dispositivo.</p>
+        <button class="btn pulsante-google" id="accedi-google">
+          <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C41 35.4 44 30.1 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+          </svg>
+          Accedi con Google
+        </button>
+        <p class="separatore">oppure con email e password</p>
+        <div class="campi-accesso">
+          <input type="email" id="accesso-email" placeholder="Email" autocomplete="email">
+          <input type="password" id="accesso-password" placeholder="Password (almeno 6 caratteri)"
+                 autocomplete="current-password">
+        </div>
+        <div class="azioni">
+          <button class="btn attivo" id="accedi-email">Accedi</button>
+          <button class="btn" id="registrati-email">Registrati</button>
+        </div>
+        <button class="link-semplice" id="password-dimenticata">Password dimenticata?</button>
+      </div>
+
+      <!-- Primo accesso: scelta del nome -->
+      <div id="account-benvenuto" hidden>
+        <h2>🎉 Benvenuto!</h2>
+        <p class="testo-gruppo">Come vuoi che ti vedano gli amici?</p>
+        <div class="riga-codice">
+          <input id="nome-profilo-nuovo" maxlength="30" placeholder="Il tuo nome" autocomplete="nickname">
+          <button class="btn attivo" id="crea-profilo">Continua</button>
+        </div>
+      </div>
+
+      <!-- Accesso fatto: il tuo profilo -->
+      <div id="account-profilo" hidden>
+        <h2 id="titolo-profilo">👤 Profilo</h2>
+        <h3>Il tuo nome</h3>
+        <div class="riga-codice">
+          <input id="nome-profilo" maxlength="30" autocomplete="nickname">
+          <button class="btn" id="salva-nome-profilo">Salva</button>
+        </div>
+        <h3>Il tuo codice amico</h3>
+        <p class="codice-gruppo" id="codice-amico"></p>
+        <p class="nota">Dallo agli amici: con questo codice possono mandarti una richiesta di amicizia.</p>
+        <button class="link-semplice" id="esci-account">Esci dall'account</button>
+      </div>
+
+      <p class="stato-import" id="messaggio-account"></p>
+    </div>
+  </div>
 
   <!-- Finestra del gruppo: entrare con un codice, crearne uno nuovo o invitare gli amici -->
   <div class="finestra" id="finestra-gruppo" hidden>
@@ -2791,15 +2883,30 @@
       } catch (e) { /* senza salvataggio locale si va avanti lo stesso */ }
     }
 
-    async function caricaFirebase() {
-      if (fs) return;
-      const base = `https://www.gstatic.com/firebasejs/${VERSIONE_FIREBASE}`;
-      const [app, firestore] = await Promise.all([
-        import(`${base}/firebase-app.js`),
-        import(`${base}/firebase-firestore.js`),
-      ]);
-      fs = firestore;
-      db = firestore.getFirestore(app.initializeApp(FIREBASE_CONFIG));
+    var fa = null;     // le funzioni per gli accessi (Firebase Authentication)
+    var auth = null;
+    var caricamentoFirebase = null;
+
+    // Scarica Firebase una volta sola, anche se più parti del sito lo chiedono insieme
+    function caricaFirebase() {
+      if (!caricamentoFirebase) {
+        caricamentoFirebase = (async () => {
+          const base = `https://www.gstatic.com/firebasejs/${VERSIONE_FIREBASE}`;
+          const [app, firestore, autenticazione] = await Promise.all([
+            import(`${base}/firebase-app.js`),
+            import(`${base}/firebase-firestore.js`),
+            import(`${base}/firebase-auth.js`),
+          ]);
+          const istanza = app.initializeApp(FIREBASE_CONFIG);
+          fa = autenticazione;
+          auth = autenticazione.getAuth(istanza);
+          auth.languageCode = 'it';   // le email (es. recupero password) arrivano in italiano
+          fs = firestore;
+          db = firestore.getFirestore(istanza);
+        })();
+        caricamentoFirebase.catch(() => { caricamentoFirebase = null; });   // si potrà riprovare
+      }
+      return caricamentoFirebase;
     }
 
     // ---------- Quali documenti rappresentano i nostri dati ----------
@@ -3274,9 +3381,237 @@
       }
     }
 
+    // =================================================================
+    //  ACCOUNT PERSONALI (Firebase Authentication)
+    // =================================================================
+    // Ogni persona può avere un account. Su Firestore il profilo sta in
+    // "utenti/{id}" (nome e codice amico), mentre "codici/{codice}" serve a
+    // trovare una persona partendo dal suo codice amico.
+    const CHIAVE_HA_ACCOUNT = 'commander-hub-ha-account';
+
+    var utente = null;    // chi ha fatto l'accesso (null = nessuno)
+    var profilo = null;   // il suo profilo: { nome, codiceAmico }
+
+    const finestraAccount = document.getElementById('finestra-account');
+    const pulsanteAccount = document.getElementById('pulsante-account');
+    const messaggioAccount = document.getElementById('messaggio-account');
+
+    function scriviMessaggioAccount(testo, errore) {
+      messaggioAccount.textContent = testo;
+      messaggioAccount.className = 'stato-import' + (errore ? ' errore' : '');
+    }
+
+    // Traduce gli errori di Firebase in frasi comprensibili
+    function spiegaErroreAccesso(errore) {
+      const messaggi = {
+        'auth/invalid-email': 'L\'email non sembra valida.',
+        'auth/missing-password': 'Scrivi la password.',
+        'auth/weak-password': 'La password deve avere almeno 6 caratteri.',
+        'auth/email-already-in-use': 'Esiste già un account con questa email: prova con "Accedi".',
+        'auth/invalid-credential': 'Email o password non corrette.',
+        'auth/wrong-password': 'Email o password non corrette.',
+        'auth/user-not-found': 'Non esiste un account con questa email: prova con "Registrati".',
+        'auth/too-many-requests': 'Troppi tentativi: aspetta qualche minuto e riprova.',
+        'auth/popup-closed-by-user': 'Accesso con Google annullato.',
+        'auth/popup-blocked': 'Il browser ha bloccato la finestra di Google: consenti i popup e riprova.',
+        'auth/network-request-failed': 'Nessuna connessione a internet.',
+        'auth/unauthorized-domain': 'Questo indirizzo non è ancora autorizzato nelle impostazioni di Firebase.',
+        'auth/operation-not-allowed': 'Questo tipo di accesso non è ancora attivo nelle impostazioni di Firebase.',
+      };
+      return messaggi[errore.code] || `Qualcosa è andato storto (${errore.code || errore.message}).`;
+    }
+
+    function mostraSezioneAccount(sezione) {
+      ['ospite', 'benvenuto', 'profilo'].forEach(nome =>
+        { document.getElementById(`account-${nome}`).hidden = nome !== sezione; });
+    }
+
+    function aggiornaVistaAccount() {
+      if (!utente) {
+        pulsanteAccount.textContent = '👤 Accedi';
+        pulsanteAccount.classList.remove('collegato');
+        mostraSezioneAccount('ospite');
+        return;
+      }
+      if (!profilo) {
+        pulsanteAccount.textContent = '👤 Completa il profilo';
+        mostraSezioneAccount('benvenuto');
+        return;
+      }
+      pulsanteAccount.textContent = `👤 ${profilo.nome}`;
+      pulsanteAccount.classList.add('collegato');
+      document.getElementById('titolo-profilo').textContent = `👤 ${profilo.nome}`;
+      document.getElementById('nome-profilo').value = profilo.nome;
+      document.getElementById('codice-amico').textContent = profilo.codiceAmico;
+      mostraSezioneAccount('profilo');
+    }
+
+    function apriFinestraAccount() {
+      scriviMessaggioAccount('', false);
+      aggiornaVistaAccount();
+      finestraAccount.hidden = false;
+    }
+    pulsanteAccount.addEventListener('click', () => {
+      apriFinestraAccount();
+      collegaAscoltoAccesso();
+    });
+
+    // ---------- Codice amico ----------
+    // Es. "SIMO-4821": quattro lettere dal nome e quattro cifre a caso
+    function generaCodiceAmico(nome) {
+      const lettere = nome.normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4).padEnd(4, 'X');
+      const cifre = String(crypto.getRandomValues(new Uint16Array(1))[0] % 10000).padStart(4, '0');
+      return `${lettere}-${cifre}`;
+    }
+
+    // Prenota un codice libero: se è già di qualcun altro, Firebase rifiuta e ne proviamo un altro
+    async function prenotaCodiceAmico(nome) {
+      for (let tentativo = 0; tentativo < 8; tentativo++) {
+        const codice = generaCodiceAmico(nome);
+        try {
+          await fs.setDoc(fs.doc(db, 'codici', codice), { uid: utente.uid });
+          return codice;
+        } catch (errore) {
+          if (errore.code !== 'permission-denied') throw errore;
+        }
+      }
+      throw new Error('Non riesco a creare il codice amico, riprova.');
+    }
+
+    // ---------- Accesso e uscita ----------
+    async function dopoAccesso(nuovoUtente) {
+      utente = nuovoUtente;
+      profilo = null;
+      if (utente) {
+        scriviLocale(CHIAVE_HA_ACCOUNT, '1');
+        try {
+          const documento = await fs.getDoc(fs.doc(db, 'utenti', utente.uid));
+          profilo = documento.exists() ? documento.data() : null;
+        } catch (errore) {
+          scriviMessaggioAccount('Non riesco a leggere il tuo profilo. Riprova tra poco.', true);
+        }
+        // Primo accesso: proponiamo il nome di Google (se c'è) e chiediamo conferma
+        if (!profilo) {
+          document.getElementById('nome-profilo-nuovo').value = utente.displayName || '';
+          finestraAccount.hidden = false;
+        }
+      }
+      aggiornaVistaAccount();
+    }
+
+    document.getElementById('accedi-google').addEventListener('click', async () => {
+      scriviMessaggioAccount('Apro la finestra di Google…', false);
+      try {
+        await caricaFirebase();
+        await fa.signInWithPopup(auth, new fa.GoogleAuthProvider());
+        scriviMessaggioAccount('', false);
+      } catch (errore) {
+        scriviMessaggioAccount(spiegaErroreAccesso(errore), true);
+      }
+    });
+
+    async function accessoConEmail(registrazione) {
+      const email = document.getElementById('accesso-email').value.trim();
+      const password = document.getElementById('accesso-password').value;
+      scriviMessaggioAccount(registrazione ? 'Creo il tuo account…' : 'Accesso in corso…', false);
+      try {
+        await caricaFirebase();
+        if (registrazione) await fa.createUserWithEmailAndPassword(auth, email, password);
+        else await fa.signInWithEmailAndPassword(auth, email, password);
+        document.getElementById('accesso-password').value = '';
+        scriviMessaggioAccount('', false);
+      } catch (errore) {
+        scriviMessaggioAccount(spiegaErroreAccesso(errore), true);
+      }
+    }
+    document.getElementById('accedi-email').addEventListener('click', () => accessoConEmail(false));
+    document.getElementById('registrati-email').addEventListener('click', () => accessoConEmail(true));
+    document.getElementById('accesso-password').addEventListener('keydown', evento => {
+      if (evento.key === 'Enter') accessoConEmail(false);
+    });
+
+    document.getElementById('password-dimenticata').addEventListener('click', async () => {
+      const email = document.getElementById('accesso-email').value.trim();
+      if (!email) {
+        scriviMessaggioAccount('Scrivi prima la tua email qui sopra.', true);
+        return;
+      }
+      try {
+        await caricaFirebase();
+        await fa.sendPasswordResetEmail(auth, email);
+        scriviMessaggioAccount('📧 Se l\'account esiste, ti abbiamo mandato un\'email per scegliere una nuova password.', false);
+      } catch (errore) {
+        scriviMessaggioAccount(spiegaErroreAccesso(errore), true);
+      }
+    });
+
+    document.getElementById('esci-account').addEventListener('click', async () => {
+      await fa.signOut(auth);
+      scriviLocale(CHIAVE_HA_ACCOUNT, null);
+      scriviMessaggioAccount('Sei uscito dall\'account.', false);
+    });
+
+    // ---------- Profilo ----------
+    function nomeValido(nome) {
+      if (!nome) { scriviMessaggioAccount('Scrivi un nome.', true); return false; }
+      return true;
+    }
+
+    document.getElementById('crea-profilo').addEventListener('click', async () => {
+      const nome = document.getElementById('nome-profilo-nuovo').value.trim();
+      if (!nomeValido(nome)) return;
+      scriviMessaggioAccount('Creo il tuo profilo…', false);
+      try {
+        const codiceAmico = await prenotaCodiceAmico(nome);
+        profilo = { nome, codiceAmico };
+        await fs.setDoc(fs.doc(db, 'utenti', utente.uid), { ...profilo, creato: fs.serverTimestamp() });
+        scriviMessaggioAccount('✓ Profilo creato!', false);
+        aggiornaVistaAccount();
+      } catch (errore) {
+        profilo = null;
+        scriviMessaggioAccount(errore.code === 'permission-denied'
+          ? 'Firebase ha rifiutato il salvataggio: controlla le regole di sicurezza.'
+          : errore.message, true);
+      }
+    });
+
+    document.getElementById('salva-nome-profilo').addEventListener('click', async () => {
+      const nome = document.getElementById('nome-profilo').value.trim();
+      if (!nomeValido(nome)) return;
+      try {
+        await fs.setDoc(fs.doc(db, 'utenti', utente.uid), { nome }, { merge: true });
+        profilo.nome = nome;
+        aggiornaVistaAccount();
+        scriviMessaggioAccount('✓ Nome aggiornato.', false);
+      } catch (errore) {
+        scriviMessaggioAccount('Non riesco a salvare il nome, riprova.', true);
+      }
+    });
+
+    // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
+    // (Firebase si scarica solo quando serve, così chi non usa l'account non aspetta)
+    function avviaAccount() {
+      if (leggiLocale(CHIAVE_HA_ACCOUNT)) collegaAscoltoAccesso();
+    }
+
+    // Firebase ci avvisa ogni volta che qualcuno entra o esce dall'account
+    var ascoltoAccessoAttivo = false;
+    async function collegaAscoltoAccesso() {
+      if (ascoltoAccessoAttivo) return;
+      ascoltoAccessoAttivo = true;
+      try {
+        await caricaFirebase();
+        fa.onAuthStateChanged(auth, dopoAccesso);
+      } catch (e) {
+        ascoltoAccessoAttivo = false;
+        scriviMessaggioAccount('Non riesco a collegarmi: sei connesso a internet?', true);
+      }
+    }
+
     creaScintille(40);
     disegna();
     avviaCondivisione();
+    avviaAccount();
     aggiornaSchermoAcceso();
   </script>
 </body>
