@@ -35,6 +35,16 @@
     /* Qualsiasi elemento con l'attributo "hidden" resta nascosto */
     [hidden] { display: none !important; }
 
+    /* Toccare due volte in fretta "+" deve contare due volte, non ingrandire la pagina
+       (lo zoom con due dita resta possibile) */
+    html, button, input, select, textarea { touch-action: manipulation; }
+
+    /* Sui telefoni l'iPhone ingrandisce la pagina quando tocchi un campo con il testo
+       più piccolo di 16px: li portiamo tutti a 16px */
+    @media (pointer: coarse) {
+      input, select, textarea { font-size: 16px !important; }
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -1326,14 +1336,20 @@
           giocatore,
         })));
 
+      // Descrizioni dei pulsanti per chi usa la lettura vocale dello schermo
+      const chi = pulisci(nomePosto(posto));
+
       const righeComandante = fonti.map(f => {
         const valore = posto.danni[f.chiave] || 0;
+        const da = pulisci(f.nome);
         return `
           <div class="riga ${valore >= regole.dannoComandante ? 'letale' : ''}">
-            <span class="etichetta" title="Comandante di ${pulisci(f.giocatore)}">⚔️ da ${pulisci(f.nome)}</span>
-            <button class="mini" data-azione="comandante" data-i="${i}" data-fonte="${f.chiave}" data-delta="-1">−</button>
+            <span class="etichetta" title="Comandante di ${pulisci(f.giocatore)}">⚔️ da ${da}</span>
+            <button class="mini" data-azione="comandante" data-i="${i}" data-fonte="${f.chiave}" data-delta="-1"
+                    aria-label="Togli 1 danno di ${da} a ${chi}">−</button>
             <span class="valore">${valore}</span>
-            <button class="mini" data-azione="comandante" data-i="${i}" data-fonte="${f.chiave}" data-delta="1">+</button>
+            <button class="mini" data-azione="comandante" data-i="${i}" data-fonte="${f.chiave}" data-delta="1"
+                    aria-label="Aggiungi 1 danno di ${da} a ${chi}">+</button>
           </div>`;
       }).join('');
 
@@ -1353,21 +1369,27 @@
           </div>
 
           <div class="vita">
-            <button class="grande" data-azione="vita" data-i="${i}" data-delta="-1">−</button>
-            <div class="numero">${posto.vita}</div>
-            <button class="grande" data-azione="vita" data-i="${i}" data-delta="1">+</button>
+            <button class="grande" data-azione="vita" data-i="${i}" data-delta="-1"
+                    aria-label="Togli 1 punto vita a ${chi}">−</button>
+            <div class="numero" aria-label="Punti vita di ${chi}">${posto.vita}</div>
+            <button class="grande" data-azione="vita" data-i="${i}" data-delta="1"
+                    aria-label="Aggiungi 1 punto vita a ${chi}">+</button>
           </div>
           <div class="rapidi">
-            <button class="btn" data-azione="vita" data-i="${i}" data-delta="-5">−5</button>
-            <button class="btn" data-azione="vita" data-i="${i}" data-delta="5">+5</button>
+            <button class="btn" data-azione="vita" data-i="${i}" data-delta="-5"
+                    aria-label="Togli 5 punti vita a ${chi}">−5</button>
+            <button class="btn" data-azione="vita" data-i="${i}" data-delta="5"
+                    aria-label="Aggiungi 5 punti vita a ${chi}">+5</button>
           </div>
 
           <div class="sezione">
             <div class="riga ${posto.veleno >= regole.veleno ? 'letale' : ''}">
               <span class="etichetta">🧪 Veleno (letale a ${regole.veleno})</span>
-              <button class="mini" data-azione="veleno" data-i="${i}" data-delta="-1">−</button>
+              <button class="mini" data-azione="veleno" data-i="${i}" data-delta="-1"
+                      aria-label="Togli 1 segnalino veleno a ${chi}">−</button>
               <span class="valore">${posto.veleno}</span>
-              <button class="mini" data-azione="veleno" data-i="${i}" data-delta="1">+</button>
+              <button class="mini" data-azione="veleno" data-i="${i}" data-delta="1"
+                      aria-label="Aggiungi 1 segnalino veleno a ${chi}">+</button>
             </div>
             <div class="titolo-sezione">Danni da comandante (letale a ${regole.dannoComandante})</div>
             ${righeComandante}
@@ -1413,6 +1435,9 @@
 
       const posto = partitaAttuale().posti[pulsante.dataset.i];
       const delta = Number(pulsante.dataset.delta);
+
+      // Una vibrazione brevissima conferma il tocco sui contatori (solo telefoni Android)
+      if (delta && navigator.vibrate) navigator.vibrate(12);
 
       switch (pulsante.dataset.azione) {
         case 'vita':
@@ -2216,6 +2241,7 @@
       document.querySelectorAll('[data-vista]').forEach(b =>
         b.classList.toggle('attivo', b.dataset.vista === nome));
       if (nome === 'mazzi') disegnaMazzi();
+      aggiornaSchermoAcceso();
     }
     document.querySelectorAll('[data-vista]').forEach(b =>
       b.addEventListener('click', () => mostraVista(b.dataset.vista)));
@@ -2645,6 +2671,35 @@
       if (evento.target.closest('li[data-immagine]')) anteprima.hidden = true;
     });
 
+    // ---------- Schermo sempre acceso durante la partita ----------
+    // Finché è aperto il segnapunti chiediamo al telefono di non spegnere lo schermo.
+    // Il telefono toglie questo permesso quando si cambia app: lo richiediamo al ritorno.
+    var bloccoSchermo = null;
+    var richiestaInCorso = false;
+
+    async function aggiornaSchermoAcceso() {
+      const serve = document.visibilityState === 'visible'
+        && !document.getElementById('vista-segnapunti').hidden;
+      if (!('wakeLock' in navigator) || richiestaInCorso) return;
+      richiestaInCorso = true;
+      try {
+        if (serve && !bloccoSchermo) {
+          bloccoSchermo = await navigator.wakeLock.request('screen');
+          bloccoSchermo.addEventListener('release', () => { bloccoSchermo = null; });
+        } else if (!serve && bloccoSchermo) {
+          await bloccoSchermo.release();
+        }
+      } catch (e) {
+        /* il browser può rifiutare (es. batteria scarica): pazienza */
+      } finally {
+        richiestaInCorso = false;
+      }
+    }
+
+    document.addEventListener('visibilitychange', aggiornaSchermoAcceso);
+    // Alcuni telefoni (iPhone) lo concedono solo dopo un tocco sulla pagina
+    document.addEventListener('pointerdown', () => { if (!bloccoSchermo) aggiornaSchermoAcceso(); });
+
     // ---------- Stelle dello sfondo ----------
     // Sparge piccole luci colorate ferme, con posizione, grandezza e colore casuali
     function creaScintille(quante) {
@@ -2698,6 +2753,9 @@
     var daInviare = new Set(); // cosa è cambiato: 'stato', 'registro', 'mazzi'
     var timerInvio = null;
     var ridisegnoInSospeso = false;
+    var contatori = new Map();    // giocatore → ultimi punti vita e veleno noti sul server
+    var sfondiGruppo = new Map(); // giocatore → foto di sfondo ricevuta dal gruppo
+    var conFoto = new Set();      // giocatori che nel gruppo hanno una foto di sfondo
 
     function leggiLocale(chiave) {
       try { return localStorage.getItem(chiave); } catch (e) { return null; }
@@ -2737,9 +2795,48 @@
           numeri: { commander: stato.partite.commander.numero, thg: stato.partite.thg.numero },
         },
       }];
-      ['commander', 'thg'].forEach(modalita => stato.partite[modalita].posti.forEach((posto, i) =>
-        elenco.push({ percorso: percorso('posti', `${modalita}-${i}`), dati: posto })));
+      ['commander', 'thg'].forEach(modalita => stato.partite[modalita].posti.forEach((posto, i) => {
+        const chiave = `${modalita}-${i}`;
+        // Una foto caricata dal telefono pesa centinaia di KB: viaggia in un documento
+        // a parte, così i clic su "+" e "−" non se la portano dietro ogni volta
+        const fotoLocale = typeof posto.sfondo === 'string' && posto.sfondo.startsWith('data:');
+        // Il gruppo ha una foto che non è ancora arrivata qui: non la cancelliamo per sbaglio
+        const fotoInArrivo = !posto.sfondo && conFoto.has(chiave) && !sfondiGruppo.has(chiave);
+        elenco.push({
+          percorso: percorso('posti', chiave),
+          conContatori: true,
+          dati: fotoLocale || fotoInArrivo ? { ...posto, sfondo: 'caricato' } : posto,
+        });
+        if (!fotoInArrivo) {
+          elenco.push({ percorso: percorso('stato', `sfondo-${chiave}`), dati: fotoLocale ? posto.sfondo : null });
+        }
+      }));
       return elenco;
+    }
+
+    // Punti vita e veleno di un giocatore viaggiano come "differenze" (+1, −3…):
+    // se due amici toccano lo stesso contatore nello stesso istante, Firebase le
+    // somma entrambe invece di perderne una. Il resto viaggia come testo.
+    function operazionePosto(p, posto) {
+      const { vita, veleno, ...resto } = posto;
+      const testo = JSON.stringify(resto);
+      const campi = {};
+      if (inviati.get(p) !== testo) {
+        inviati.set(p, testo);
+        campi.json = testo;
+      }
+      const noti = contatori.get(p);
+      if (!noti) {
+        // Prima volta (o documento di una versione vecchia): valori completi
+        campi.vita = vita;
+        campi.veleno = veleno;
+      } else {
+        if (vita !== noti.vita) campi.vita = fs.increment(vita - noti.vita);
+        if (veleno !== noti.veleno) campi.veleno = fs.increment(veleno - noti.veleno);
+      }
+      contatori.set(p, { vita, veleno });
+      if (!Object.keys(campi).length) return null;
+      return lotto => lotto.set(fs.doc(db, p), campi, { merge: true });
     }
 
     // ---------- Invio delle modifiche ----------
@@ -2758,8 +2855,13 @@
 
       tipi.forEach(tipo => {
         const presenti = new Set();
-        documenti(tipo).forEach(({ percorso: p, dati }) => {
+        documenti(tipo).forEach(({ percorso: p, dati, conContatori }) => {
           presenti.add(p);
+          if (conContatori) {
+            const operazione = operazionePosto(p, dati);
+            if (operazione) operazioni.push(operazione);
+            return;
+          }
           const testo = JSON.stringify(dati);
           if (inviati.get(p) === testo) return;   // non è cambiato
           inviati.set(p, testo);
@@ -2824,13 +2926,70 @@
         });
         if (cambiato) dopoAggiornamento(collezione);
         segnaCollegato();
-      }, errore => {
-        // Se Firebase interrompe l'ascolto (rete assente, problema temporaneo),
-        // ci ricolleghiamo da soli dopo qualche secondo
-        segnalaErrore(errore);
-        const codice = codiceGruppo;
-        setTimeout(() => { if (codiceGruppo === codice) collegaGruppo(codice); }, 5000);
-      });
+      }, erroreAscolto);
+      staccaAscolti.push(ferma);
+    }
+
+    // Se Firebase interrompe un ascolto (rete assente, problema temporaneo),
+    // ci ricolleghiamo da soli dopo qualche secondo
+    function erroreAscolto(errore) {
+      segnalaErrore(errore);
+      const codice = codiceGruppo;
+      setTimeout(() => { if (codiceGruppo === codice) collegaGruppo(codice); }, 5000);
+    }
+
+    // I giocatori hanno un ascolto tutto loro, perché i contatori arrivano a parte
+    function ascoltaPosti() {
+      const ferma = fs.onSnapshot(fs.collection(db, percorso('posti')), istantanea => {
+        let cambiato = false;
+        istantanea.docChanges().forEach(cambio => {
+          if (cambio.doc.metadata.hasPendingWrites || cambio.type === 'removed') return;
+          const chiave = cambio.doc.id;
+          const [modalita, indice] = chiave.split('-');
+          const posto = stato.partite[modalita]?.posti[Number(indice)];
+          if (!posto) return;
+          const p = percorso('posti', chiave);
+          const documento = cambio.doc.data();
+          try {
+            const resto = JSON.parse(documento.json);
+            if (!resto.membri) throw new Error('giocatore incompleto');
+            // Le versioni vecchie del sito tenevano i contatori dentro il testo
+            const nuovoFormato = typeof documento.vita === 'number';
+            const server = nuovoFormato
+              ? { vita: documento.vita, veleno: documento.veleno }
+              : { vita: resto.vita, veleno: resto.veleno };
+
+            if (inviati.get(p) !== documento.json) {
+              inviati.set(p, documento.json);
+              const { vita, veleno, ...campi } = resto;
+              if (campi.sfondo === 'caricato') {
+                conFoto.add(chiave);
+                campi.sfondo = sfondiGruppo.get(chiave) || null;
+              } else {
+                conFoto.delete(chiave);
+              }
+              Object.assign(posto, campi);
+              cambiato = true;
+            }
+
+            // Le modifiche fatte qui e non ancora partite si sommano a quelle arrivate
+            const noti = contatori.get(p);
+            const vita = noti ? server.vita + (posto.vita - noti.vita) : server.vita;
+            const veleno = noti ? server.veleno + (posto.veleno - noti.veleno) : server.veleno;
+            if (vita !== posto.vita || veleno !== posto.veleno) {
+              posto.vita = vita;
+              posto.veleno = veleno;
+              cambiato = true;
+            }
+            if (nuovoFormato) contatori.set(p, server);
+            else contatori.delete(p);   // al prossimo invio lo riscriviamo nel formato nuovo
+          } catch (e) {
+            console.warn('Dato del gruppo non leggibile, lo salto:', p, e);
+          }
+        });
+        if (cambiato) dopoAggiornamento('posti');
+        segnaCollegato();
+      }, erroreAscolto);
       staccaAscolti.push(ferma);
     }
 
@@ -2852,15 +3011,21 @@
           }
           return;
         }
+        // La foto di sfondo di un giocatore, che viaggia separata
+        if (id.startsWith('sfondo-')) {
+          const chiave = id.slice('sfondo-'.length);
+          sfondiGruppo.set(chiave, dati);
+          const [modalita, indice] = chiave.split('-');
+          const posto = stato.partite[modalita]?.posti[Number(indice)];
+          if (posto && conFoto.has(chiave)) posto.sfondo = dati || null;
+          return;
+        }
         if (id !== 'meta' || !dati) return;
         stato.modalita = dati.modalita;
         stato.partite.commander.numero = dati.numeri.commander;
         stato.partite.thg.numero = dati.numeri.thg;
       });
-      ascolta('posti', (id, dati) => {
-        const [modalita, indice] = id.split('-');
-        if (dati && stato.partite[modalita]) stato.partite[modalita].posti[Number(indice)] = dati;
-      });
+      ascoltaPosti();
       ascolta('registro', (id, dati) => {
         if (dati && !dati.partecipanti) throw new Error('partita incompleta');
         sostituisciInElenco(registro, id, dati, idRegistro);
@@ -2922,6 +3087,9 @@
       staccaAscolti.forEach(ferma => ferma());
       staccaAscolti = [];
       inviati.clear();
+      contatori.clear();
+      sfondiGruppo.clear();
+      conFoto.clear();
       codiceGruppo = codice;
       scriviLocale(CHIAVE_GRUPPO, codice);
       ascoltaGruppo();
@@ -2956,6 +3124,9 @@
       staccaAscolti.forEach(ferma => ferma());
       staccaAscolti = [];
       inviati.clear();
+      contatori.clear();
+      sfondiGruppo.clear();
+      conFoto.clear();
       codiceGruppo = null;
       scriviLocale(CHIAVE_GRUPPO, null);
       aggiornaVistaGruppo();
@@ -3082,6 +3253,7 @@
     creaScintille(40);
     disegna();
     avviaCondivisione();
+    aggiornaSchermoAcceso();
   </script>
 </body>
 </html>
