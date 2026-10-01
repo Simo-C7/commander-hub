@@ -263,17 +263,30 @@
         var(--bordo) border-box;
     }
 
+    /* Pulsante dello sfondo: tondo, nel colore del mana del giocatore */
     .scegli-sfondo {
       margin-left: auto;
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
       border-radius: 50%;
-      font-size: .95rem;
-      background: rgba(255, 255, 255, .06);
-      border: 1px solid rgba(180, 140, 232, .3);
-      transition: background .15s;
+      color: var(--accento);
+      background: color-mix(in srgb, var(--accento) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accento) 45%, transparent);
+      transition: background .15s, box-shadow .15s, transform .15s;
     }
-    .scegli-sfondo:hover { background: rgba(180, 140, 232, .25); }
+    .scegli-sfondo:hover {
+      background: color-mix(in srgb, var(--accento) 25%, transparent);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accento) 60%, transparent);
+      transform: translateY(-1px);
+    }
+    /* Quando la scheda ha già uno sfondo, il pulsante è "acceso" */
+    .scegli-sfondo.con-immagine {
+      color: #1c0f30;
+      background: var(--accento);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--accento) 55%, transparent);
+    }
 
     .carta.sconfitto { filter: grayscale(.85); opacity: .6; }
 
@@ -1298,6 +1311,17 @@
       return `--accento: ${tinte[0]}; --bordo: linear-gradient(135deg, ${sfumatura}); --alone: ${alone};`;
     }
 
+    // Icona del pulsante "sfondo": una cornice con sole e montagne, più una
+    // scintilla sull'angolo. Prende il colore del mana del giocatore (currentColor).
+    const ICONA_SFONDO = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="5" width="17" height="15" rx="3"/>
+        <circle cx="8.5" cy="10" r="1.7"/>
+        <path d="M3.6 17.8l4.6-4.6 3.6 3.6 2.4-2.4 5.2 5.2"/>
+        <path d="M20 1.2l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/>
+      </svg>`;
+
     // Accettiamo come sfondo solo le immagini di Scryfall o quelle caricate
     // dal computer: così nessun testo strano finisce dentro lo stile della pagina
     const sfondoSicuro = url =>
@@ -1364,8 +1388,8 @@
           <div class="nomi">${campiNome}</div>
           <div class="pallini">
             ${pallini}
-            <button class="scegli-sfondo" data-azione="sfondo" data-i="${i}"
-                    title="Sfondo della scheda" aria-label="Sfondo della scheda">🖼️</button>
+            <button class="scegli-sfondo ${sfondo ? 'con-immagine' : ''}" data-azione="sfondo" data-i="${i}"
+                    title="Sfondo della scheda" aria-label="Sfondo della scheda di ${chi}">${ICONA_SFONDO}</button>
           </div>
 
           <div class="vita">
