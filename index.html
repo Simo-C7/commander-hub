@@ -725,6 +725,69 @@
     .link-semplice:hover { color: var(--testo); }
     #finestra-gruppo .stato-import { text-align: center; margin-bottom: 0; }
 
+    /* ---------- Sezione amici ---------- */
+    .vista-amici { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+    .vista-amici h3 {
+      margin: 22px 0 10px;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--testo-tenue);
+    }
+    .riquadro-amici {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(180, 140, 232, .25);
+      text-align: center;
+    }
+    .riquadro-amici h3 { margin-top: 0; }
+    .riquadro-amici p { margin: 0 0 12px; }
+    .riquadro-amici .nota { margin-top: 12px; }
+    .codice-inline { font-family: Consolas, "Courier New", monospace; color: #ffe38a; letter-spacing: .05em; }
+    .link-inline { margin: 0 0 0 6px; }
+
+    .elenco-amici { display: grid; gap: 8px; }
+    .riga-amico {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(180, 140, 232, .2);
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(145deg, var(--viola-chiaro), var(--viola));
+    }
+    .dati-amico { flex: 1; min-width: 0; }
+    .dati-amico strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dati-amico span { font-size: .8rem; color: var(--testo-tenue); }
+    .azioni-amico { display: flex; gap: 6px; flex-shrink: 0; }
+    .azioni-amico .btn { padding: 6px 12px; font-size: .85rem; }
+    .vuoto-amici { color: var(--testo-tenue); text-align: center; font-size: .9rem; padding: 10px 0; }
+
+    .contatore-richieste {
+      display: inline-grid;
+      place-items: center;
+      min-width: 18px;
+      height: 18px;
+      margin-left: 4px;
+      padding: 0 5px;
+      border-radius: 999px;
+      font-size: .72rem;
+      color: #fff;
+      background: var(--pericolo);
+    }
+
     /* ---------- Account ---------- */
     .barra-account { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
     #pulsante-account.collegato { color: var(--lavanda); border-color: var(--viola-chiaro); }
@@ -1011,6 +1074,7 @@
   <nav class="viste">
     <button class="scheda-vista attivo" data-vista="segnapunti">🎯 Segnapunti</button>
     <button class="scheda-vista" data-vista="mazzi">🃏 Mazzi</button>
+    <button class="scheda-vista" data-vista="amici">👥 Amici <span class="contatore-richieste" id="contatore-richieste" hidden></span></button>
   </nav>
 
   <!-- ===================== SEZIONE SEGNAPUNTI ===================== -->
@@ -1081,6 +1145,49 @@
       <button class="btn attivo" id="sposta-mazzi">Spostali nel mio account</button>
     </div>
     <div class="griglia-mazzi" id="griglia-mazzi"></div>
+  </div>
+
+  <!-- ======================= SEZIONE AMICI ======================== -->
+  <div class="vista-amici" id="vista-amici" hidden>
+    <!-- Senza account -->
+    <div id="amici-ospite" class="riquadro-amici">
+      <p>👥 Per aggiungere amici, invitarli alle partite e vedere i loro mazzi serve un account.</p>
+      <button class="btn attivo" id="amici-accedi">👤 Accedi</button>
+    </div>
+
+    <!-- Con l'account -->
+    <div id="amici-account" hidden>
+      <div class="riquadro-amici">
+        <h3>Aggiungi un amico</h3>
+        <div class="riga-codice">
+          <input id="codice-nuovo-amico" placeholder="Codice amico, es. LUCA-1234" autocomplete="off" spellcheck="false">
+          <button class="btn attivo" id="invia-richiesta">Invia richiesta</button>
+        </div>
+        <p class="nota">Il tuo codice amico è <strong class="codice-inline" id="mio-codice-amico"></strong>
+          <button class="link-semplice link-inline" id="copia-codice-amico">📋 Copia</button></p>
+        <p class="stato-import" id="messaggio-amici"></p>
+      </div>
+
+      <div id="blocco-ricevute" hidden>
+        <h3>Richieste ricevute</h3>
+        <div class="elenco-amici" id="elenco-ricevute"></div>
+      </div>
+      <div id="blocco-inviate" hidden>
+        <h3>Richieste inviate</h3>
+        <div class="elenco-amici" id="elenco-inviate"></div>
+      </div>
+      <h3>I tuoi amici</h3>
+      <div class="elenco-amici" id="elenco-amici"></div>
+    </div>
+  </div>
+
+  <!-- Finestra con i mazzi di un amico -->
+  <div class="finestra" id="finestra-mazzi-amico" hidden>
+    <div class="pannello pannello-largo" role="dialog" aria-label="Mazzi dell'amico">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2 id="titolo-mazzi-amico">Mazzi</h2>
+      <div class="griglia-mazzi" id="griglia-mazzi-amico"></div>
+    </div>
   </div>
 
   <div class="avviso" id="avviso"></div>
@@ -1418,7 +1525,9 @@
     // Con più colori, il bordo diventa una sfumatura e ogni colore
     // illumina un lato diverso della scheda.
     function stileColori(colori) {
-      const tinte = colori.map(c => `var(--mana-${c})`);
+      // Solo colori di mana veri: i dati degli altri potrebbero contenere di tutto
+      const validi = colori.filter(c => MANA[c]);
+      const tinte = (validi.length ? validi : ['C']).map(c => `var(--mana-${c})`);
       const sfumatura = tinte.length === 1 ? `${tinte[0]}, ${tinte[0]}` : tinte.join(', ');
       const alone = tinte.map((tinta, n) => {
         const angolo = (n / tinte.length) * 2 * Math.PI;
@@ -2383,6 +2492,8 @@
     function mostraVista(nome) {
       document.getElementById('vista-segnapunti').hidden = nome !== 'segnapunti';
       document.getElementById('vista-mazzi').hidden = nome !== 'mazzi';
+      document.getElementById('vista-amici').hidden = nome !== 'amici';
+      if (nome === 'amici') disegnaAmici();
       document.querySelectorAll('[data-vista]').forEach(b =>
         b.classList.toggle('attivo', b.dataset.vista === nome));
       if (nome === 'mazzi') {
@@ -2537,19 +2648,22 @@
           Premi <strong>＋ Nuovo mazzo</strong> e incolla la lista delle carte.</p>`;
         return;
       }
-      griglia.innerHTML = mazzi.map(mazzo => {
-        const comandante = cartaComandante(mazzo);
-        const identita = comandante ? comandante.identita : [];
-        const arte = sfondoSicuro(comandante?.arte);
-        return `
-          <button class="tessera-mazzo" data-mazzo="${mazzo.id}"
-                  style="${stileColori(identita.length ? identita : ['C'])} ${arte ? `--immagine: url('${arte}');` : ''}">
-            ${pipsIdentita(identita)}
-            <span class="tessera-nome">${pulisci(mazzo.nome)}</span>
-            <span class="tessera-info">${pulisci(comandante ? comandante.nome : 'Comandante non scelto')}</span>
-            <span class="tessera-info">${mazzo.proprietario ? `di ${pulisci(mazzo.proprietario)} · ` : ''}${contaCarte(mazzo)} carte</span>
-          </button>`;
-      }).join('');
+      griglia.innerHTML = mazzi.map(tesseraMazzo).join('');
+    }
+
+    // La "tessera" di un mazzo, con l'illustrazione del comandante
+    function tesseraMazzo(mazzo) {
+      const comandante = cartaComandante(mazzo);
+      const identita = comandante ? comandante.identita : [];
+      const arte = sfondoSicuro(comandante?.arte);
+      return `
+        <button class="tessera-mazzo" data-mazzo="${pulisci(mazzo.id)}"
+                style="${stileColori(identita.length ? identita : ['C'])} ${arte ? `--immagine: url('${arte}');` : ''}">
+          ${pipsIdentita(identita)}
+          <span class="tessera-nome">${pulisci(mazzo.nome)}</span>
+          <span class="tessera-info">${pulisci(comandante ? comandante.nome : 'Comandante non scelto')}</span>
+          <span class="tessera-info">${mazzo.proprietario ? `di ${pulisci(mazzo.proprietario)} · ` : ''}${contaCarte(mazzo)} carte</span>
+        </button>`;
     }
 
     document.getElementById('griglia-mazzi').addEventListener('click', evento => {
@@ -2638,15 +2752,24 @@
     const contenutoMazzo = document.getElementById('contenuto-mazzo');
     const anteprima = document.getElementById('anteprima');
     let mazzoAperto = null;
+    let mazzoDiUnAmico = null;   // se guardi il mazzo di un amico: si vede ma non si modifica
 
     function apriMazzo(id) {
       mazzoAperto = id;
+      mazzoDiUnAmico = null;
       disegnaMazzo();
       finestraMazzo.hidden = false;
       contenutoMazzo.scrollTop = 0;
     }
 
-    const mazzoCorrente = () => mazzi.find(m => m.id === mazzoAperto);
+    function apriMazzoAmico(mazzo) {
+      mazzoDiUnAmico = mazzo;
+      disegnaMazzo();
+      finestraMazzo.hidden = false;
+      contenutoMazzo.scrollTop = 0;
+    }
+
+    const mazzoCorrente = () => mazzoDiUnAmico || mazzi.find(m => m.id === mazzoAperto);
 
     function disegnaMazzo() {
       const mazzo = mazzoCorrente();
@@ -2733,7 +2856,9 @@
 
         <div class="riepilogo">
           <div class="dato"><strong>${totale}</strong>/100 carte ${totale === 100 ? '✓' : ''}</div>
-          <div class="dato">👑 <select class="selettore" id="scelta-comandante-mazzo">${opzioniComandante}</select></div>
+          <div class="dato">👑 ${mazzoDiUnAmico
+            ? `<strong>${pulisci(comandante ? comandante.nome : 'non scelto')}</strong>`
+            : `<select class="selettore" id="scelta-comandante-mazzo">${opzioniComandante}</select>`}</div>
           <div class="dato">Costo medio: <strong>${magie ? (sommaCosti / magie).toFixed(2) : '–'}</strong></div>
           <div class="dato">Terre: <strong>${terre}</strong></div>
         </div>
@@ -2753,8 +2878,9 @@
         <div class="azioni-mazzo">
           <select class="selettore" id="assegna-posto" aria-label="Giocatore">${opzioniPosti}</select>
           <button class="btn attivo" id="assegna-mazzo" ${comandante ? '' : 'disabled'}>🎯 Usa in partita</button>
-          <button class="btn" id="modifica-mazzo">✏️ Modifica</button>
-          <button class="btn" id="elimina-mazzo">🗑️ Elimina</button>
+          ${mazzoDiUnAmico ? '' : `
+            <button class="btn" id="modifica-mazzo">✏️ Modifica</button>
+            <button class="btn" id="elimina-mazzo">🗑️ Elimina</button>`}
         </div>`;
     }
 
@@ -3531,8 +3657,8 @@
           finestraAccount.hidden = false;
         }
       }
-      if (mazziDellAccount()) attivaMazziAccount();
-      else tornaAiMazziLocali();
+      if (mazziDellAccount()) { attivaMazziAccount(); attivaAmici(); }
+      else { tornaAiMazziLocali(); disattivaAmici(); }
       aggiornaVistaAccount();
     }
 
@@ -3604,6 +3730,7 @@
         await fs.setDoc(fs.doc(db, 'utenti', utente.uid), { ...profilo, creato: fs.serverTimestamp() });
         scriviMessaggioAccount('✓ Profilo creato!', false);
         attivaMazziAccount();
+        attivaAmici();
         aggiornaVistaAccount();
       } catch (errore) {
         profilo = null;
@@ -3731,6 +3858,223 @@
       salvaMazzi();
       dopoAggiornamentoMazzi();
       mostraAvviso(`🃏 ${daSpostare.length} ${daSpostare.length === 1 ? 'mazzo spostato' : 'mazzi spostati'} nel tuo account`);
+    });
+
+    // ---------- Amici ----------
+    // Ognuno ha la sua lista in "utenti/{id}/amici/{idAmico}" con uno stato:
+    //   'inviata'  = ho mandato io la richiesta, aspetto la risposta
+    //   'ricevuta' = qualcuno mi ha mandato una richiesta
+    //   'amici'    = richiesta accettata
+    // Una richiesta scrive due documenti: uno nella mia lista e uno nella sua.
+    var amici = [];               // { uid, stato, nome, codiceAmico }
+    var staccaAmici = null;
+
+    const docAmico = (proprietario, altro) => fs.doc(db, 'utenti', proprietario, 'amici', altro);
+    const messaggioAmici = document.getElementById('messaggio-amici');
+
+    function scriviMessaggioAmici(testo, errore) {
+      messaggioAmici.textContent = testo;
+      messaggioAmici.className = 'stato-import' + (errore ? ' errore' : '');
+    }
+
+    function attivaAmici() {
+      disattivaAmici();
+      const uid = utente.uid;
+      staccaAmici = fs.onSnapshot(fs.collection(db, 'utenti', uid, 'amici'), async istantanea => {
+        if (!utente || utente.uid !== uid) return;
+        amici = istantanea.docs.map(d => ({ uid: d.id, ...d.data() }));
+        disegnaAmici();
+        // I nomi possono essere cambiati da quando vi siete aggiunti: li rileggiamo dai profili
+        const profili = await Promise.all(amici.map(a =>
+          fs.getDoc(fs.doc(db, 'utenti', a.uid)).catch(() => null)));
+        profili.forEach((p, k) => { if (p && p.exists()) amici[k].nome = p.data().nome; });
+        disegnaAmici();
+      }, errore => console.error(errore));
+    }
+
+    function disattivaAmici() {
+      if (staccaAmici) staccaAmici();
+      staccaAmici = null;
+      amici = [];
+      disegnaAmici();
+    }
+
+    const iniziale = nome => (nome || '?').trim().charAt(0).toUpperCase();
+
+    function rigaAmico(amico, pulsanti) {
+      return `
+        <div class="riga-amico">
+          <div class="avatar">${pulisci(iniziale(amico.nome))}</div>
+          <div class="dati-amico">
+            <strong>${pulisci(amico.nome)}</strong>
+            <span>${pulisci(amico.codiceAmico || '')}</span>
+          </div>
+          <div class="azioni-amico">${pulsanti}</div>
+        </div>`;
+    }
+
+    function disegnaAmici() {
+      const conAccount = mazziDellAccount();
+      document.getElementById('amici-ospite').hidden = conAccount;
+      document.getElementById('amici-account').hidden = !conAccount;
+
+      const ricevute = amici.filter(a => a.stato === 'ricevuta');
+      const inviate = amici.filter(a => a.stato === 'inviata');
+      const confermati = amici.filter(a => a.stato === 'amici')
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+
+      // Numerino rosso sulla scheda "Amici" con le richieste da guardare
+      const contatore = document.getElementById('contatore-richieste');
+      contatore.hidden = !ricevute.length;
+      contatore.textContent = ricevute.length;
+      if (!conAccount) return;
+
+      document.getElementById('mio-codice-amico').textContent = profilo.codiceAmico;
+      document.getElementById('blocco-ricevute').hidden = !ricevute.length;
+      document.getElementById('blocco-inviate').hidden = !inviate.length;
+
+      document.getElementById('elenco-ricevute').innerHTML = ricevute.map(a => rigaAmico(a, `
+        <button class="btn attivo" data-accetta="${a.uid}">Accetta</button>
+        <button class="btn" data-rimuovi="${a.uid}">Rifiuta</button>`)).join('');
+      document.getElementById('elenco-inviate').innerHTML = inviate.map(a => rigaAmico(a, `
+        <span class="dati-amico"><span>In attesa…</span></span>
+        <button class="btn" data-rimuovi="${a.uid}">Annulla</button>`)).join('');
+      document.getElementById('elenco-amici').innerHTML = confermati.length
+        ? confermati.map(a => rigaAmico(a, `
+            <button class="btn" data-mazzi-amico="${a.uid}">🃏 Mazzi</button>
+            <button class="btn" data-rimuovi="${a.uid}" data-amico-confermato>Rimuovi</button>`)).join('')
+        : '<p class="vuoto-amici">Non hai ancora amici: chiedi il codice amico a qualcuno e mandagli una richiesta.</p>';
+    }
+
+    async function inviaRichiestaAmicizia() {
+      const campo = document.getElementById('codice-nuovo-amico');
+      const codice = campo.value.trim().toUpperCase().replace(/\s+/g, '');
+      if (!codice) { scriviMessaggioAmici('Scrivi il codice amico.', true); return; }
+      if (codice === profilo.codiceAmico) { scriviMessaggioAmici('Questo è il tuo codice 🙂', true); return; }
+      scriviMessaggioAmici('Cerco…', false);
+      try {
+        const trovato = await fs.getDoc(fs.doc(db, 'codici', codice));
+        if (!trovato.exists()) { scriviMessaggioAmici('Nessuno ha questo codice: controlla di averlo scritto bene.', true); return; }
+        const altro = trovato.data().uid;
+        const giaPresente = amici.find(a => a.uid === altro);
+        if (giaPresente?.stato === 'amici') { scriviMessaggioAmici(`${giaPresente.nome} è già tuo amico.`, false); return; }
+        if (giaPresente?.stato === 'inviata') { scriviMessaggioAmici('Gli hai già mandato una richiesta.', false); return; }
+        // Mi aveva già mandato una richiesta lui: la accettiamo e basta
+        if (giaPresente?.stato === 'ricevuta') { await accettaAmicizia(altro); campo.value = ''; return; }
+
+        const suoProfilo = (await fs.getDoc(fs.doc(db, 'utenti', altro))).data();
+        const lotto = fs.writeBatch(db);
+        lotto.set(docAmico(utente.uid, altro), { stato: 'inviata', nome: suoProfilo.nome, codiceAmico: codice });
+        lotto.set(docAmico(altro, utente.uid), { stato: 'ricevuta', nome: profilo.nome, codiceAmico: profilo.codiceAmico });
+        await lotto.commit();
+        campo.value = '';
+        scriviMessaggioAmici(`📨 Richiesta inviata a ${suoProfilo.nome}!`, false);
+      } catch (errore) {
+        console.error(errore);
+        scriviMessaggioAmici('Non riesco a mandare la richiesta, riprova.', true);
+      }
+    }
+
+    async function accettaAmicizia(altro) {
+      const lotto = fs.writeBatch(db);
+      lotto.update(docAmico(utente.uid, altro), { stato: 'amici' });
+      lotto.update(docAmico(altro, utente.uid), { stato: 'amici' });
+      await lotto.commit();
+      const amico = amici.find(a => a.uid === altro);
+      scriviMessaggioAmici(`🎉 Ora tu e ${amico ? amico.nome : 'il tuo amico'} siete amici!`, false);
+    }
+
+    // Rifiutare, annullare e rimuovere funzionano allo stesso modo: si cancellano i due documenti
+    async function rimuoviAmicizia(altro) {
+      const lotto = fs.writeBatch(db);
+      lotto.delete(docAmico(utente.uid, altro));
+      lotto.delete(docAmico(altro, utente.uid));
+      await lotto.commit();
+    }
+
+    document.getElementById('invia-richiesta').addEventListener('click', inviaRichiestaAmicizia);
+    document.getElementById('codice-nuovo-amico').addEventListener('keydown', evento => {
+      if (evento.key === 'Enter') inviaRichiestaAmicizia();
+    });
+    document.getElementById('amici-accedi').addEventListener('click', () => pulsanteAccount.click());
+    document.getElementById('copia-codice-amico').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(profilo.codiceAmico);
+        scriviMessaggioAmici('📋 Codice copiato: mandalo ai tuoi amici.', false);
+      } catch (e) {
+        scriviMessaggioAmici(`Il tuo codice è ${profilo.codiceAmico}`, false);
+      }
+    });
+
+    document.getElementById('vista-amici').addEventListener('click', async evento => {
+      const pulsante = evento.target.closest('[data-accetta], [data-rimuovi], [data-mazzi-amico]');
+      if (!pulsante) return;
+      try {
+        if (pulsante.dataset.accetta) {
+          await accettaAmicizia(pulsante.dataset.accetta);
+        } else if (pulsante.dataset.rimuovi) {
+          const amico = amici.find(a => a.uid === pulsante.dataset.rimuovi);
+          if ('amicoConfermato' in pulsante.dataset
+              && !confirm(`Rimuovere ${amico.nome} dai tuoi amici?`)) return;
+          await rimuoviAmicizia(pulsante.dataset.rimuovi);
+        } else if (pulsante.dataset.mazziAmico) {
+          await apriMazziAmico(pulsante.dataset.mazziAmico);
+        }
+      } catch (errore) {
+        console.error(errore);
+        scriviMessaggioAmici('Operazione non riuscita, riprova.', true);
+      }
+    });
+
+    // I mazzi degli altri arrivano da fuori: teniamo solo campi del tipo giusto,
+    // così un dato strano non può rompere la pagina o inserirci del codice
+    function mazzoSicuro(m) {
+      const testo = v => (typeof v === 'string' ? v : '');
+      const numero = (v, minimo) => (Number.isFinite(v) ? Math.max(minimo, Math.floor(v)) : minimo);
+      return {
+        id: testo(m.id).replace(/[^A-Za-z0-9_-]/g, '') || 'mazzo',
+        nome: testo(m.nome),
+        proprietario: testo(m.proprietario),
+        testo: '',
+        comandante: typeof m.comandante === 'string' ? m.comandante : null,
+        mancanti: Array.isArray(m.mancanti) ? m.mancanti.filter(x => typeof x === 'string') : [],
+        carte: (Array.isArray(m.carte) ? m.carte : []).map(c => ({
+          nome: testo(c.nome),
+          tipo: ORDINE_TIPI.includes(c.tipo) && c.tipo !== 'Comandante' ? c.tipo : 'Altro',
+          cmc: numero(c.cmc, 0),
+          identita: Array.isArray(c.identita) ? c.identita.filter(colore => MANA[colore]) : [],
+          immagine: sfondoSicuro(c.immagine),
+          arte: sfondoSicuro(c.arte),
+          puoComandare: c.puoComandare === true,
+          illimitata: c.illimitata === true,
+          quantita: numero(c.quantita, 1),
+        })),
+      };
+    }
+
+    // ---------- I mazzi di un amico (solo da guardare) ----------
+    const finestraMazziAmico = document.getElementById('finestra-mazzi-amico');
+    let mazziAmicoAperti = [];
+
+    async function apriMazziAmico(uid) {
+      const amico = amici.find(a => a.uid === uid);
+      document.getElementById('titolo-mazzi-amico').textContent = `🃏 I mazzi di ${amico.nome}`;
+      const griglia = document.getElementById('griglia-mazzi-amico');
+      griglia.innerHTML = '<p class="registro-vuoto">Carico i mazzi…</p>';
+      finestraMazziAmico.hidden = false;
+      const elenco = await fs.getDocs(fs.collection(db, 'utenti', uid, 'mazzi'));
+      mazziAmicoAperti = elenco.docs.flatMap(d => {
+        try { return [mazzoSicuro(JSON.parse(d.data().json))]; } catch (e) { return []; }
+      }).sort((a, b) => a.id.localeCompare(b.id));
+      griglia.innerHTML = mazziAmicoAperti.length
+        ? mazziAmicoAperti.map(tesseraMazzo).join('')
+        : `<p class="registro-vuoto">${pulisci(amico.nome)} non ha ancora caricato mazzi.</p>`;
+    }
+
+    document.getElementById('griglia-mazzi-amico').addEventListener('click', evento => {
+      const tessera = evento.target.closest('[data-mazzo]');
+      if (!tessera) return;
+      apriMazzoAmico(mazziAmicoAperti.find(m => m.id === tessera.dataset.mazzo));
     });
 
     // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
