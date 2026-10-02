@@ -841,7 +841,6 @@
       text-decoration: underline;
     }
     .link-semplice:hover { color: var(--testo); }
-    #finestra-gruppo .stato-import { text-align: center; margin-bottom: 0; }
 
     /* ---------- Sezione amici ---------- */
     .vista-amici { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
@@ -985,6 +984,22 @@
     }
     .voce-account.collegato { color: var(--lavanda); border-color: var(--viola-chiaro); }
     .separa-menu { height: 1px; margin: 10px 6px; background: rgba(180, 140, 232, .2); }
+
+    /* ---------- Trasferimento dei vecchi dati ---------- */
+    .blocco-trasferimento {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      text-align: left;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(180, 140, 232, .22);
+    }
+    .blocco-trasferimento h3 { margin: 0 0 8px; }
+    .blocco-trasferimento p { margin: 0 0 10px; font-size: .9rem; }
+    .blocco-trasferimento .fatto { color: #7fe0a4; margin: 0; }
+    .riga-nome-vecchio { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+    .riga-nome-vecchio span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .riga-nome-vecchio .selettore { max-width: 55%; }
 
     /* ---------- Statistiche ---------- */
     .stat-riquadri {
@@ -1326,7 +1341,7 @@
     </div>
     <p class="sottotitolo">Il punto di ritrovo del gruppo Commander</p>
     <div class="barra-account">
-      <button class="indicatore-gruppo" id="indicatore-gruppo">⚪ Solo questo dispositivo</button>
+      <button class="indicatore-gruppo" id="indicatore-gruppo" hidden></button>
     </div>
   </header>
 
@@ -1451,6 +1466,20 @@
     </div>
   </div>
 
+  <!-- Finestra per portare nell'account i dati delle versioni precedenti -->
+  <div class="finestra" id="finestra-trasferimento" hidden>
+    <div class="pannello pannello-largo" role="dialog" aria-label="Trasferimento dei vecchi dati">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>📦 Porta i vecchi dati nel tuo account</h2>
+      <p class="testo-gruppo">Mazzi e partite salvati prima degli account sono solo su questo dispositivo:
+        spostali nel tuo account per ritrovarli ovunque e farli contare nelle statistiche.</p>
+      <div class="blocco-trasferimento" id="trasferimento-mazzi"></div>
+      <div class="blocco-trasferimento" id="trasferimento-registro"></div>
+      <div class="blocco-trasferimento" id="trasferimento-gruppo"></div>
+      <p class="stato-import" id="messaggio-trasferimento"></p>
+    </div>
+  </div>
+
   <!-- Finestra con le statistiche (tue o di un amico) -->
   <div class="finestra" id="finestra-statistiche" hidden>
     <div class="pannello pannello-largo" role="dialog" aria-label="Statistiche">
@@ -1523,51 +1552,15 @@
         </div>
         <h3>Il tuo codice amico</h3>
         <p class="codice-gruppo" id="codice-amico"></p>
-        <div class="azioni"><button class="btn attivo" id="mie-statistiche">📊 Le mie statistiche</button></div>
+        <div class="azioni">
+          <button class="btn attivo" id="mie-statistiche">📊 Le mie statistiche</button>
+          <button class="btn" id="apri-trasferimento">📦 Vecchi dati</button>
+        </div>
         <p class="nota">Dallo agli amici: con questo codice possono mandarti una richiesta di amicizia.</p>
         <button class="link-semplice" id="esci-account">Esci dall'account</button>
       </div>
 
       <p class="stato-import" id="messaggio-account"></p>
-    </div>
-  </div>
-
-  <!-- Finestra del gruppo: entrare con un codice, crearne uno nuovo o invitare gli amici -->
-  <div class="finestra" id="finestra-gruppo" hidden>
-    <div class="pannello" role="dialog" aria-label="Gruppo">
-      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
-      <h2>👥 Gruppo</h2>
-
-      <!-- Quando NON sei collegato -->
-      <div id="gruppo-scollegato">
-        <p class="testo-gruppo">Collegati al gruppo per condividere partite, registro e mazzi
-          con gli amici, in tempo reale.</p>
-        <div class="riga-codice">
-          <input id="campo-codice" placeholder="Codice del gruppo" autocomplete="off" spellcheck="false">
-          <button class="btn attivo" id="entra-gruppo">Entra</button>
-        </div>
-        <p class="separatore">oppure</p>
-        <button class="btn" id="crea-gruppo">＋ Crea un nuovo gruppo</button>
-        <p class="nota">Creando un gruppo, i dati di questo dispositivo diventano il punto di partenza per tutti.</p>
-        <button class="link-semplice" data-chiudi>Continua senza gruppo (solo questo dispositivo)</button>
-      </div>
-
-      <!-- Quando sei collegato -->
-      <div id="gruppo-collegato" hidden>
-        <p class="testo-gruppo">🟢 Sei collegato al gruppo: le modifiche arrivano a tutti all'istante.</p>
-        <h3>Invita gli amici</h3>
-        <div class="riga-codice">
-          <input id="link-invito" readonly>
-          <button class="btn attivo" id="copia-invito">📋 Copia</button>
-        </div>
-        <p class="nota" id="nota-invito"></p>
-        <h3>Codice del gruppo</h3>
-        <p class="codice-gruppo" id="mostra-codice"></p>
-        <p class="nota">Condividilo solo con gli amici: chi ha il codice può vedere e modificare i dati del gruppo.</p>
-        <button class="link-semplice" id="esci-gruppo">Esci dal gruppo su questo dispositivo</button>
-      </div>
-
-      <p class="stato-import" id="messaggio-gruppo"></p>
     </div>
   </div>
 
@@ -2586,6 +2579,17 @@
       scelta.numero = stato.partite.commander.numero;
       scelta.primo = null;
       creaBozze();
+      // Con l'account, se nessun posto è tuo il primo diventa "⭐ Io":
+      // così la partita conta nelle tue statistiche
+      if (mazziDellAccount() && (!tavoloAttivo || tavoloAttivo.proprietario === utente.uid)) {
+        Object.values(bozze).forEach(b => {
+          const primo = b.posti[0];
+          if (!b.posti.some(p => p.account.includes(utente.uid)) && !primo.account[0]) {
+            primo.account[0] = utente.uid;
+            primo.membri[0] = profilo.nome;
+          }
+        });
+      }
       bozza = bozze[scelta.modalita];
       disegnaNuovaPartita();
       finestraNuova.hidden = false;
@@ -2743,7 +2747,6 @@
       }
     }
     function salvaRegistro() {
-      notificaCambio('registro');
       try { localStorage.setItem(CHIAVE_REGISTRO, JSON.stringify(registro)); } catch (e) { /* vedi salvaStato */ }
     }
 
@@ -2818,18 +2821,24 @@
     const contenutoRegistro = document.getElementById('contenuto-registro');
     let schedaRegistro = 'classifica';
 
+    // Con l'account il registro mostra le partite dello storico dell'account
+    // (anche quelle chiuse dagli amici); senza account quelle del dispositivo.
+    var registroAccount = null;   // null = da caricare
+
+    const elencoRegistro = () => (mazziDellAccount() ? (registroAccount || []) : registro);
+
     // Conta partite giocate e vinte per ogni nome (giocatore o comandante).
     // "estrai" dice quali nomi prendere da ogni partecipante.
-    function calcolaClassifica(estrai) {
+    function calcolaClassifica(elenco, estrai) {
       const righe = new Map();
-      registro.forEach(partita => partita.partecipanti.forEach(partecipante => {
+      elenco.forEach(partita => partita.partecipanti.forEach(partecipante => {
         estrai(partecipante).forEach(({ nome, identita }) => {
-          if (!nome) return;
+          if (!nome || typeof nome !== 'string') return;
           const chiave = nome.toLowerCase();   // "marco" e "Marco" sono la stessa persona
           const riga = righe.get(chiave) || { nome, identita: null, giocate: 0, vinte: 0 };
           riga.giocate++;
-          if (partecipante.vincitore) riga.vinte++;
-          riga.identita = riga.identita || identita || null;
+          if (partecipante.vincitore === true) riga.vinte++;
+          riga.identita = riga.identita || (Array.isArray(identita) ? identita : null);
           righe.set(chiave, riga);
         });
       }));
@@ -2840,6 +2849,10 @@
 
     function tabellaClassifica(righe, intestazione) {
       const medaglie = ['🥇', '🥈', '🥉'];
+      const pips = identita => {
+        const colori = identita.filter(c => MANA[c]);
+        return `<span class="pips">${(colori.length ? colori : ['C']).map(simboloMana).join('')}</span>`;
+      };
       return `
         <table class="classifica">
           <thead><tr>
@@ -2849,8 +2862,7 @@
           <tbody>${righe.map((riga, n) => `
             <tr>
               <td class="posizione">${medaglie[n] || n + 1}</td>
-              <td>${pulisci(riga.nome)}${riga.identita
-                ? `<span class="pips">${(riga.identita.length ? riga.identita : ['C']).map(simboloMana).join('')}</span>` : ''}</td>
+              <td>${pulisci(riga.nome)}${riga.identita ? pips(riga.identita) : ''}</td>
               <td class="numerico">${riga.giocate}</td>
               <td class="numerico">${riga.vinte}</td>
               <td class="numerico">${Math.round(riga.vinte / riga.giocate * 100)}%</td>
@@ -2866,16 +2878,19 @@
       const modalita = partita.modalita === 'thg'
         ? 'Two-Headed Giant'
         : `Commander · ${partita.partecipanti.length} giocatori`;
+      const testi = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : []);
       const partecipanti = partita.partecipanti.map(p => `
-        <div class="partecipante ${p.vincitore ? 'vincitore' : ''}">
-          <span>${p.vincitore ? '🏆' : '•'} ${pulisci(p.giocatori.join(' & '))}</span>
-          <span class="comandante-storico">${pulisci(p.comandanti.filter(Boolean).join(' & '))}</span>
+        <div class="partecipante ${p.vincitore === true ? 'vincitore' : ''}">
+          <span>${p.vincitore === true ? '🏆' : '•'} ${pulisci(testi(p.giocatori).join(' & '))}</span>
+          <span class="comandante-storico">${pulisci(testi(p.comandanti).join(' & '))}</span>
         </div>`).join('');
+      // Nello storico dell'account può eliminare una partita solo chi l'ha salvata
+      const eliminabile = !mazziDellAccount() || partita.proprietario === utente.uid;
       return `
         <div class="voce-storico">
           <div class="intestazione-voce">
             <span>${data} · ${modalita}</span>
-            <button class="elimina" data-elimina="${indice}" title="Elimina questa partita">🗑️</button>
+            ${eliminabile ? `<button class="elimina" data-elimina="${indice}" title="Elimina questa partita">🗑️</button>` : ''}
           </div>
           ${partecipanti}
         </div>`;
@@ -2894,20 +2909,39 @@
         return;
       }
 
-      if (!registro.length) {
+      // Con l'account le partite arrivano dallo storico: la prima volta le carichiamo
+      if (mazziDellAccount() && !registroAccount) {
+        contenutoRegistro.innerHTML = '<p class="registro-vuoto">Carico le partite del tuo account…</p>';
+        leggiStoricoMio()
+          .then(partite => {
+            registroAccount = partite.sort((a, b) => b.data.localeCompare(a.data));   // dalla più recente
+            if (!finestraRegistro.hidden) disegnaRegistro();
+          })
+          .catch(() => {
+            contenutoRegistro.innerHTML = '<p class="registro-vuoto">Non riesco a leggere le partite. Sei connesso a internet?</p>';
+          });
+        return;
+      }
+
+      const elenco = elencoRegistro();
+      if (!elenco.length) {
+        const vecchie = mazziDellAccount() && vecchiePartite().length
+          ? '<br><br>Hai delle partite vecchie su questo dispositivo: portale qui da <strong>👤 Profilo → 📦 Vecchi dati</strong>.'
+          : '';
         contenutoRegistro.innerHTML = `<p class="registro-vuoto">Ancora nessuna partita registrata.<br>
-          A fine partita premi <strong>🏆 Fine partita</strong> per salvarla qui.</p>`;
+          A fine partita premi <strong>🏆 Fine partita</strong> per salvarla qui.${vecchie}</p>`;
         return;
       }
       if (schedaRegistro === 'storico') {
-        contenutoRegistro.innerHTML = registro.map(voceStorico).join('');
+        contenutoRegistro.innerHTML = elenco.map(voceStorico).join('');
       } else if (schedaRegistro === 'comandanti') {
-        const righe = calcolaClassifica(p => p.comandanti.map((nome, m) => ({ nome, identita: p.identita[m] })));
+        const righe = calcolaClassifica(elenco, p =>
+          (p.comandanti || []).map((nome, m) => ({ nome, identita: p.identita?.[m] })));
         contenutoRegistro.innerHTML = righe.length
           ? tabellaClassifica(righe, 'Comandante')
           : '<p class="registro-vuoto">Nessun comandante indicato nelle partite salvate.</p>';
       } else {
-        const righe = calcolaClassifica(p => p.giocatori.map(nome => ({ nome })));
+        const righe = calcolaClassifica(elenco, p => (p.giocatori || []).map(nome => ({ nome })));
         contenutoRegistro.innerHTML = tabellaClassifica(righe, 'Giocatore');
       }
     }
@@ -2917,6 +2951,7 @@
       const conAccount = mazziDellAccount();
       document.getElementById('scheda-io').hidden = !conAccount;
       if (!conAccount && schedaRegistro === 'io') schedaRegistro = 'classifica';
+      registroAccount = null;   // a ogni apertura rileggiamo lo storico aggiornato
       disegnaRegistro();
       finestraRegistro.hidden = false;
     });
@@ -2927,11 +2962,23 @@
         disegnaRegistro();
       }));
 
-    contenutoRegistro.addEventListener('click', evento => {
+    contenutoRegistro.addEventListener('click', async evento => {
       const pulsante = evento.target.closest('[data-elimina]');
       if (!pulsante || !confirm('Eliminare questa partita dal registro?')) return;
-      registro.splice(Number(pulsante.dataset.elimina), 1);
-      salvaRegistro();
+      const indice = Number(pulsante.dataset.elimina);
+      if (mazziDellAccount()) {
+        // Partita dello storico dell'account: la cancelliamo da Firebase
+        try {
+          await fs.deleteDoc(fs.doc(db, 'storico', registroAccount[indice].id));
+          registroAccount.splice(indice, 1);
+          statisticheMie().catch(() => {});
+        } catch (errore) {
+          mostraAvviso('⚠️ Non riesco a eliminare la partita');
+        }
+      } else {
+        registro.splice(indice, 1);
+        salvaRegistro();
+      }
       disegnaRegistro();
     });
 
@@ -2950,7 +2997,6 @@
     function salvaMazzi() {
       // Con l'account, i mazzi vanno nell'account invece che sul dispositivo o nel gruppo
       if (mazziDellAccount()) return inviaMazziAccount();
-      notificaCambio('mazzi');
       try {
         localStorage.setItem(CHIAVE_MAZZI, JSON.stringify(mazzi));
         return true;
@@ -3507,14 +3553,11 @@
       appId: '1:794240850229:web:95ab2e4dbf98c3c39c147c',
     };
     const VERSIONE_FIREBASE = '11.0.1';
-    const CHIAVE_GRUPPO = 'commander-hub-gruppo';            // codice salvato su questo dispositivo
-    const CHIAVE_GRUPPO_PROPOSTO = 'commander-hub-gruppo-proposto';
 
     // "var" invece di "let": queste variabili servono già a notificaCambio,
     // che può essere chiamata prima che il programma arrivi fin qui
     var fs = null;             // le funzioni di Firestore, scaricate quando servono
     var db = null;
-    var codiceGruppo = null;
     var tavoloAttivo = null;         // il tavolo (partita su invito) a cui sei seduto, se c'è
     var basePercorso = null;   // dove stanno i dati condivisi: "gruppi/CODICE" oppure "partite/ID"
     var staccaAscolti = [];
@@ -3567,9 +3610,7 @@
     // Le partite registrate prima di questa versione non avevano un id: lo ricaviamo dalla data
     const idRegistro = partita => partita.id || partita.data.replace(/[^0-9A-Za-z]/g, '');
 
-    function documenti(tipo) {
-      if (tipo === 'registro') return registro.map(p => ({ percorso: percorso('registro', idRegistro(p)), dati: p }));
-      if (tipo === 'mazzi') return mazzi.map(m => ({ percorso: percorso('mazzi', m.id), dati: m }));
+    function documenti() {
       // La partita: un documento con le impostazioni e uno per ogni giocatore,
       // così due amici che toccano schede diverse non si sovrascrivono a vicenda
       const elenco = [{
@@ -3652,11 +3693,8 @@
       const operazioni = [];
 
       tipi.forEach(tipo => {
-        if (tipo === 'mazzi' && mazziDellAccount()) return;   // i mazzi personali non vanno nel gruppo
-        if (tavoloAttivo && tipo !== 'stato') return;              // al tavolo si condivide solo la partita
-        const presenti = new Set();
-        documenti(tipo).forEach(({ percorso: p, dati, conContatori }) => {
-          presenti.add(p);
+        if (tipo !== 'stato') return;   // al tavolo si condivide solo la partita
+        documenti().forEach(({ percorso: p, dati, conContatori }) => {
           if (!possoScrivere(p)) return;   // al tavolo: solo i dati che spettano a te
           if (conContatori) {
             const operazione = operazionePosto(p, dati);
@@ -3669,15 +3707,6 @@
           // Salviamo il dato come testo: Firestore non accetta liste dentro liste
           operazioni.push(lotto => lotto.set(fs.doc(db, p), { json: testo }));
         });
-        // Partite o mazzi eliminati qui vanno eliminati anche dal gruppo
-        if (tipo !== 'stato') {
-          const prefisso = percorso(tipo) + '/';
-          [...inviati.keys()].forEach(p => {
-            if (!p.startsWith(prefisso) || presenti.has(p)) return;
-            inviati.delete(p);
-            operazioni.push(lotto => lotto.delete(fs.doc(db, p)));
-          });
-        }
       });
 
       // Firestore accetta al massimo 500 operazioni per volta
@@ -3744,7 +3773,6 @@
       setTimeout(() => {
         if (basePercorso !== base) return;
         if (tavoloAttivo) collegaTavolo(tavoloAttivo);
-        else if (codiceGruppo) collegaGruppo(codiceGruppo);
       }, 5000);
     }
 
@@ -3803,13 +3831,6 @@
       staccaAscolti.push(ferma);
     }
 
-    function sostituisciInElenco(elenco, id, dati, idDi) {
-      const posizione = elenco.findIndex(x => idDi(x) === id);
-      if (!dati) { if (posizione >= 0) elenco.splice(posizione, 1); }
-      else if (posizione >= 0) elenco[posizione] = dati;
-      else elenco.push(dati);
-    }
-
     function ascoltaGruppo() {
       ascolta('stato', (id, dati) => {
         // Un amico ha lanciato un dado o la moneta: lo mostriamo anche qui.
@@ -3836,32 +3857,12 @@
         stato.partite.thg.numero = dati.numeri.thg;
       });
       ascoltaPosti();
-      if (tavoloAttivo) return;   // al tavolo si condivide solo la partita, non registro e mazzi
-      ascolta('registro', (id, dati) => {
-        if (dati && !dati.partecipanti) throw new Error('partita incompleta');
-        sostituisciInElenco(registro, id, dati, idRegistro);
-      });
-      ascolta('mazzi', (id, dati) => {
-        if (mazziDellAccount()) return false;   // con l'account si usano i mazzi personali
-        if (dati && !dati.carte) throw new Error('mazzo incompleto');
-        sostituisciInElenco(mazzi, id, dati, m => m.id);
-      });
     }
 
     // Dopo una modifica arrivata da un amico: salviamo la copia locale e ridisegniamo
-    function dopoAggiornamento(collezione) {
-      if (collezione === 'stato' || collezione === 'posti') {
-        scriviLocale(CHIAVE_SALVATAGGIO, JSON.stringify(stato));
-        ridisegnaSeLibero();
-      } else if (collezione === 'registro') {
-        registro.sort((a, b) => b.data.localeCompare(a.data));   // dalla più recente
-        scriviLocale(CHIAVE_REGISTRO, JSON.stringify(registro));
-        if (!finestraRegistro.hidden) disegnaRegistro();
-      } else {
-        scriviLocale(CHIAVE_MAZZI, JSON.stringify(mazzi));
-        if (!document.getElementById('vista-mazzi').hidden) disegnaMazzi();
-        if (!finestraMazzo.hidden) disegnaMazzo();
-      }
+    function dopoAggiornamento() {
+      scriviLocale(CHIAVE_SALVATAGGIO, JSON.stringify(stato));
+      ridisegnaSeLibero();
     }
 
     // Se stai scrivendo un nome sul tavolo non ti togliamo il campo da sotto le dita:
@@ -3881,20 +3882,6 @@
       }, 200);
     });
 
-    // ---------- Entrare, creare, uscire ----------
-    function generaCodice() {
-      // 20 caratteri casuali (niente 0/O e 1/I, che si confondono): impossibile da indovinare
-      const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const lettere = [...crypto.getRandomValues(new Uint8Array(20))].map(n => alfabeto[n % alfabeto.length]);
-      return [0, 5, 10, 15].map(k => lettere.slice(k, k + 5).join('')).join('-');
-    }
-
-    // Accetta il codice anche incollato dentro il link d'invito, con spazi o in minuscolo
-    function pulisciCodice(testo) {
-      const daLink = testo.match(/gruppo=([A-Za-z0-9-]+)/);
-      return (daLink ? daLink[1] : testo).trim().toUpperCase().replace(/\s+/g, '');
-    }
-
     // Ferma tutti gli ascolti e dimentica cosa è stato inviato o ricevuto
     function azzeraSincronizzazione() {
       staccaAscolti.forEach(ferma => ferma());
@@ -3905,176 +3892,36 @@
       conFoto.clear();
     }
 
-    function collegaGruppo(codice) {
-      azzeraSincronizzazione();
-      tavoloAttivo = null;
-      codiceGruppo = codice;
-      basePercorso = `gruppi/${codice}`;
-      scriviLocale(CHIAVE_GRUPPO, codice);
-      ascoltaGruppo();
-      aggiornaVistaGruppo();
-    }
-
-    async function creaGruppo() {
-      await caricaFirebase();
-      collegaGruppo(generaCodice());
-      // I dati di questo dispositivo diventano quelli del gruppo
-      ['stato', 'registro', 'mazzi'].forEach(tipo => daInviare.add(tipo));
-      await inviaCambi();
-    }
-
-    async function entraNelGruppo(codice) {
-      await caricaFirebase();
-      const meta = await fs.getDoc(fs.doc(db, 'gruppi', codice, 'stato', 'meta'));
-      if (!meta.exists()) {
-        throw new Error('Gruppo non trovato: controlla di aver copiato tutto il codice');
-      }
-      // Su questo dispositivo ora valgono i dati del gruppo
-      registro = [];
-      mazzi = [];
-      scriviLocale(CHIAVE_REGISTRO, '[]');
-      scriviLocale(CHIAVE_MAZZI, '[]');
-      collegaGruppo(codice);
-    }
-
-    function esciDalGruppo() {
-      azzeraSincronizzazione();
-      codiceGruppo = null;
-      basePercorso = null;
-      scriviLocale(CHIAVE_GRUPPO, null);
-      aggiornaVistaGruppo();
-    }
-
-    // ---------- Finestra e indicatore del gruppo ----------
-    const finestraGruppo = document.getElementById('finestra-gruppo');
+    // ---------- Indicatore del tavolo ----------
+    // In alto compare solo quando sei seduto a un tavolo: "🎲 Tavolo con Luca e Marta"
     const indicatoreGruppo = document.getElementById('indicatore-gruppo');
-    const messaggioGruppo = document.getElementById('messaggio-gruppo');
 
-    function scriviMessaggioGruppo(testo, errore) {
-      messaggioGruppo.textContent = testo;
-      messaggioGruppo.className = 'stato-import' + (errore ? ' errore' : '');
-    }
-
-    const linkInvito = () => `${location.href.split('#')[0]}#gruppo=${codiceGruppo}`;
-
-    // Al tavolo: "🎲 Tavolo con Luca e Marta"
     function testoTavolo() {
       const altri = tavoloAttivo.membri.filter(uid => uid !== utente?.uid).map(uid => tavoloAttivo.nomi?.[uid] || 'un amico');
       return `🎲 Tavolo con ${altri.length ? altri.join(', ') : 'nessun altro'}`;
     }
 
     function aggiornaVistaGruppo() {
-      if (tavoloAttivo) {
-        indicatoreGruppo.textContent = testoTavolo();
-        if (!finestraTavolo.hidden) disegnaTavolo();
-        return;
-      }
-      const collegato = Boolean(codiceGruppo);
-      document.getElementById('gruppo-scollegato').hidden = collegato;
-      document.getElementById('gruppo-collegato').hidden = !collegato;
-      indicatoreGruppo.textContent = collegato ? '🟡 Collegamento al gruppo…' : '⚪ Solo questo dispositivo';
-      if (!collegato) return;
-      document.getElementById('link-invito').value = linkInvito();
-      document.getElementById('mostra-codice').textContent = codiceGruppo;
-      document.getElementById('nota-invito').textContent = !location.protocol.startsWith('http')
-        ? 'Il link funzionerà quando il sito sarà online. Per ora puoi usare il codice qui sotto.'
-        : 'Manda questo link agli amici: aprendolo entrano direttamente nel gruppo.';
+      indicatoreGruppo.hidden = !tavoloAttivo;
+      if (!tavoloAttivo) return;
+      indicatoreGruppo.textContent = testoTavolo();
+      if (!finestraTavolo.hidden) disegnaTavolo();
     }
 
     function segnaCollegato() {
       if (tavoloAttivo) indicatoreGruppo.textContent = testoTavolo();
-      else if (codiceGruppo) indicatoreGruppo.textContent = '🟢 Gruppo collegato';
     }
 
     function segnalaErrore(errore) {
       console.error(errore);
-      indicatoreGruppo.textContent = '🔴 Gruppo non raggiungibile';
-      scriviMessaggioGruppo(errore.code === 'permission-denied'
-        ? 'Accesso negato da Firebase: controlla le regole di sicurezza di Firestore.'
-        : 'Non riesco a raggiungere il gruppo. Sei connesso a internet?', true);
+      if (!tavoloAttivo) return;
+      indicatoreGruppo.textContent = '🔴 Tavolo non raggiungibile';
+      mostraAvviso(errore.code === 'permission-denied'
+        ? '⚠️ Firebase ha rifiutato una modifica: controlla le regole di sicurezza'
+        : '⚠️ Non riesco a raggiungere il tavolo. Sei connesso a internet?');
     }
 
-    function apriFinestraGruppo() {
-      scriviMessaggioGruppo('', false);
-      aggiornaVistaGruppo();
-      finestraGruppo.hidden = false;
-    }
-
-    // Al tavolo l'indicatore apre la finestra del tavolo, altrimenti quella del gruppo
-    indicatoreGruppo.addEventListener('click', () => (tavoloAttivo ? apriFinestraTavolo() : apriFinestraGruppo()));
-
-    document.getElementById('entra-gruppo').addEventListener('click', async () => {
-      const codice = pulisciCodice(document.getElementById('campo-codice').value);
-      if (codice.length < 20) {
-        scriviMessaggioGruppo('Il codice è troppo corto: incollalo tutto, trattini compresi.', true);
-        return;
-      }
-      scriviMessaggioGruppo('Mi collego al gruppo…', false);
-      try {
-        await entraNelGruppo(codice);
-        scriviMessaggioGruppo('', false);
-        finestraGruppo.hidden = true;
-        mostraAvviso('👥 Sei entrato nel gruppo!');
-      } catch (errore) {
-        if (errore.code) segnalaErrore(errore);
-        else scriviMessaggioGruppo(errore.message, true);
-      }
-    });
-
-    document.getElementById('crea-gruppo').addEventListener('click', async () => {
-      scriviMessaggioGruppo('Creo il gruppo…', false);
-      try {
-        await creaGruppo();
-        scriviMessaggioGruppo('✓ Gruppo creato! Ora invita gli amici con il link.', false);
-      } catch (errore) {
-        segnalaErrore(errore);
-      }
-    });
-
-    document.getElementById('copia-invito').addEventListener('click', async () => {
-      const campo = document.getElementById('link-invito');
-      try {
-        await navigator.clipboard.writeText(campo.value);
-      } catch (e) {
-        campo.select();   // se il browser non permette di copiare, almeno selezioniamo il testo
-        document.execCommand('copy');
-      }
-      scriviMessaggioGruppo('📋 Link copiato: incollalo nella chat del gruppo.', false);
-    });
-
-    document.getElementById('esci-gruppo').addEventListener('click', () => {
-      if (!confirm('Uscire dal gruppo su questo dispositivo? I dati restano salvati qui, ma non si aggiornano più.')) return;
-      esciDalGruppo();
-      scriviMessaggioGruppo('Sei uscito dal gruppo.', false);
-    });
-
-    // ---------- All'apertura del sito ----------
-    async function avviaCondivisione() {
-      // Link d'invito: l'indirizzo finisce con #gruppo=CODICE
-      const dalLink = new URLSearchParams(location.hash.slice(1)).get('gruppo');
-      if (dalLink) {
-        try { history.replaceState(null, '', location.href.split('#')[0]); } catch (e) { /* non importa */ }
-      }
-      const salvato = leggiLocale(CHIAVE_GRUPPO);
-
-      try {
-        if (dalLink && pulisciCodice(dalLink) !== salvato) {
-          await entraNelGruppo(pulisciCodice(dalLink));
-          mostraAvviso('👥 Benvenuto nel gruppo!');
-        } else if (salvato) {
-          await caricaFirebase();
-          collegaGruppo(salvato);
-        } else if (!leggiLocale(CHIAVE_GRUPPO_PROPOSTO)) {
-          // Prima visita: proponiamo una volta sola di collegarsi a un gruppo
-          scriviLocale(CHIAVE_GRUPPO_PROPOSTO, '1');
-          apriFinestraGruppo();
-        }
-      } catch (errore) {
-        apriFinestraGruppo();
-        if (errore.code) segnalaErrore(errore);
-        else scriviMessaggioGruppo(errore.message, true);
-      }
-    }
+    indicatoreGruppo.addEventListener('click', () => { if (tavoloAttivo) apriFinestraTavolo(); });
 
     // =================================================================
     //  ACCOUNT PERSONALI (Firebase Authentication)
@@ -4194,6 +4041,9 @@
       if (mazziDellAccount()) {
         attivaMazziAccount(); attivaAmici(); attivaInviti(); rientraAlTavolo();
         statisticheMie().catch(() => {});   // tiene aggiornato il riepilogo per gli amici
+        // Se sul dispositivo ci sono dati di prima degli account, proponiamo di portarli qui
+        // (aspettiamo un attimo che arrivi la lista amici, serve ad abbinare i nomi)
+        setTimeout(proponiTrasferimento, 1500);
       } else {
         tornaAiMazziLocali(); disattivaAmici(); disattivaInviti(); esciDalTavolo();
       }
@@ -4646,7 +4496,6 @@
     function collegaTavolo(datiTavolo) {
       azzeraSincronizzazione();
       tavoloAttivo = datiTavolo;
-      codiceGruppo = null;   // il gruppo resta salvato: ci si ricollega uscendo dal tavolo
       basePercorso = `partite/${datiTavolo.id}`;
       scriviLocale(CHIAVE_TAVOLO, datiTavolo.id);
       ascoltaGruppo();
@@ -4687,10 +4536,7 @@
       basePercorso = null;
       scriviLocale(CHIAVE_TAVOLO, null);
       finestraTavolo.hidden = true;
-      // Se prima eri in un gruppo, ti ci ricolleghiamo
-      const gruppo = leggiLocale(CHIAVE_GRUPPO);
-      if (gruppo) collegaGruppo(gruppo);
-      else aggiornaVistaGruppo();
+      aggiornaVistaGruppo();
       disegnaInviti();
       if (messaggio) mostraAvviso(messaggio);
     }
@@ -4835,6 +4681,7 @@
           data: partita.data,
         });
         statisticheMie().catch(() => {});   // aggiorna il riepilogo che vedono gli amici
+        registroAccount = null;             // il registro dell'account va riletto
       } catch (errore) {
         console.error(errore);
         mostraAvviso('⚠️ Partita salvata qui, ma non nello storico del tuo account');
@@ -4980,7 +4827,9 @@
       return elenco.docs.flatMap(d => {
         try {
           const partita = JSON.parse(d.data().json);
-          return Array.isArray(partita.partecipanti) && typeof partita.data === 'string' ? [partita] : [];
+          if (!Array.isArray(partita.partecipanti) || typeof partita.data !== 'string') return [];
+          // Chi l'ha salvata (può eliminarla) e il suo identificativo nello storico
+          return [{ ...partita, id: d.id, proprietario: d.data().proprietario }];
         } catch (e) {
           return [];
         }
@@ -5021,6 +4870,177 @@
       apriStatistiche(`📊 Le statistiche di ${profilo.nome}`, statisticheMie, true);
     });
 
+    // ---------- Trasferimento dei vecchi dati nell'account ----------
+    // Prima degli account, mazzi e registro stavano sul dispositivo (o nel vecchio
+    // gruppo con il codice). Qui si portano nell'account, una volta sola.
+    const CHIAVE_GRUPPO = 'commander-hub-gruppo';                 // codice del vecchio gruppo
+    const CHIAVE_IMPORTATE = 'commander-hub-registro-importato';  // partite già portate nell'account
+    const CHIAVE_TRASFERIMENTO_PROPOSTO = 'commander-hub-trasferimento-proposto';
+    const finestraTrasferimento = document.getElementById('finestra-trasferimento');
+    const messaggioTrasferimento = document.getElementById('messaggio-trasferimento');
+
+    function partiteGiaImportate() {
+      try { return new Set(JSON.parse(leggiLocale(CHIAVE_IMPORTATE)) || []); } catch (e) { return new Set(); }
+    }
+    const vecchiePartite = () => {
+      const importate = partiteGiaImportate();
+      return caricaRegistro().filter(p => Array.isArray(p.partecipanti) && !importate.has(idRegistro(p)));
+    };
+    const mazziDaSpostare = () => caricaMazzi().filter(m => !mazzi.some(x => x.id === m.id));
+    const haDatiDaTrasferire = () =>
+      Boolean(mazziDaSpostare().length || vecchiePartite().length || leggiLocale(CHIAVE_GRUPPO));
+
+    function scriviMessaggioTrasferimento(testo, errore) {
+      messaggioTrasferimento.textContent = testo;
+      messaggioTrasferimento.className = 'stato-import' + (errore ? ' errore' : '');
+    }
+
+    function disegnaTrasferimento() {
+      // Mazzi
+      const mazziVecchi = mazziDaSpostare();
+      document.getElementById('trasferimento-mazzi').innerHTML = `
+        <h3>🃏 Mazzi</h3>
+        ${mazziVecchi.length
+          ? `<p>Su questo dispositivo ${mazziVecchi.length === 1 ? 'c\'è 1 mazzo' : `ci sono ${mazziVecchi.length} mazzi`} che non ${mazziVecchi.length === 1 ? 'è' : 'sono'} nel tuo account.</p>
+             <button class="btn attivo" id="trasferisci-mazzi">Spostali nel mio account</button>`
+          : '<p class="fatto">✓ Nessun mazzo da spostare.</p>'}`;
+
+      // Registro: per ogni nome chiediamo chi è (tu, un amico o un ospite)
+      const partite = vecchiePartite();
+      const nomi = [...new Map(partite.flatMap(p => p.partecipanti.flatMap(q => q.giocatori || []))
+        .map(nome => [String(nome).trim().toLowerCase(), String(nome).trim()])).values()].filter(Boolean);
+      const amiciConfermati = amici.filter(a => a.stato === 'amici');
+      const chiE = nome => {
+        const minuscolo = nome.toLowerCase();
+        if (minuscolo === profilo.nome.toLowerCase()) return utente.uid;
+        return amiciConfermati.find(a => a.nome.toLowerCase() === minuscolo)?.uid || '';
+      };
+      const menu = nome => {
+        const scelto = chiE(nome);
+        const opzione = (valore, testo) =>
+          `<option value="${pulisci(valore)}" ${valore === scelto ? 'selected' : ''}>${testo}</option>`;
+        return `<select class="selettore" data-nome-vecchio="${pulisci(nome.toLowerCase())}">
+          ${opzione('', '👤 Ospite')}
+          ${opzione(utente.uid, `⭐ Io (${pulisci(profilo.nome)})`)}
+          ${amiciConfermati.map(a => opzione(a.uid, `👥 ${pulisci(a.nome)}`)).join('')}
+        </select>`;
+      };
+      document.getElementById('trasferimento-registro').innerHTML = `
+        <h3>📜 Registro delle partite</h3>
+        ${partite.length
+          ? `<p>${partite.length === 1 ? 'C\'è 1 partita' : `Ci sono ${partite.length} partite`} nel vecchio registro.
+               Dicci chi è chi: le partite conteranno nelle statistiche tue e degli amici indicati.</p>
+             ${nomi.map(nome => `<div class="riga-nome-vecchio"><span>${pulisci(nome)}</span>${menu(nome)}</div>`).join('')}
+             <div class="azioni"><button class="btn attivo" id="trasferisci-registro">Importa ${partite.length} ${partite.length === 1 ? 'partita' : 'partite'}</button></div>`
+          : '<p class="fatto">✓ Nessuna partita da importare.</p>'}`;
+
+      // Vecchio gruppo con il codice
+      const codice = leggiLocale(CHIAVE_GRUPPO);
+      const bloccoGruppo = document.getElementById('trasferimento-gruppo');
+      bloccoGruppo.hidden = !codice;
+      bloccoGruppo.innerHTML = codice ? `
+        <h3>👥 Vecchio gruppo</h3>
+        <p>Questo dispositivo era nel gruppo <strong class="codice-inline">${pulisci(codice)}</strong>.
+          I suoi mazzi e le sue partite sono già qui sopra. Dopo averli importati puoi eliminarlo dal server.</p>
+        <p class="nota">Se anche i tuoi amici vogliono importare i loro dati, falli prima entrare nel loro account da questo sito.</p>
+        <button class="btn" id="elimina-vecchio-gruppo">🗑️ Elimina il vecchio gruppo</button>` : '';
+    }
+
+    async function apriTrasferimento() {
+      scriviMessaggioTrasferimento('', false);
+      disegnaTrasferimento();
+      finestraTrasferimento.hidden = false;
+    }
+
+    // Copia le vecchie partite nello storico dell'account, con gli account scelti
+    async function importaRegistro() {
+      const scelte = {};
+      document.querySelectorAll('[data-nome-vecchio]').forEach(menu => { scelte[menu.dataset.nomeVecchio] = menu.value || null; });
+      const importate = partiteGiaImportate();
+      let fatte = 0;
+      let saltate = 0;
+      for (const partita of vecchiePartite()) {
+        const copia = JSON.parse(JSON.stringify(partita));
+        copia.id = idRegistro(partita);
+        copia.partecipanti.forEach(p => {
+          p.account = (p.giocatori || []).map((nome, m) => scelte[String(nome).trim().toLowerCase()] || p.account?.[m] || null);
+        });
+        const membri = [...new Set([utente.uid, ...copia.partecipanti.flatMap(p => p.account).filter(Boolean)])];
+        try {
+          if (membri.length > 4) throw new Error('troppi account');
+          await fs.setDoc(fs.doc(db, 'storico', copia.id), {
+            json: JSON.stringify(copia), membri, proprietario: utente.uid, data: copia.data,
+          });
+          fatte++;
+        } catch (errore) {
+          saltate++;   // es. già importata in passato da un altro dispositivo
+        }
+        importate.add(copia.id);
+        scriviMessaggioTrasferimento(`Importo le partite… ${fatte + saltate}`, false);
+      }
+      scriviLocale(CHIAVE_IMPORTATE, JSON.stringify([...importate]));
+      registroAccount = null;   // il registro dell'account va ricaricato
+      statisticheMie().catch(() => {});
+      return { fatte, saltate };
+    }
+
+    // Cancella dal server tutti i dati del vecchio gruppo
+    async function eliminaVecchioGruppo() {
+      const codice = leggiLocale(CHIAVE_GRUPPO);
+      for (const collezione of ['stato', 'posti', 'registro', 'mazzi']) {
+        const elenco = await fs.getDocs(fs.collection(db, 'gruppi', codice, collezione));
+        for (let k = 0; k < elenco.docs.length; k += 400) {
+          const lotto = fs.writeBatch(db);
+          elenco.docs.slice(k, k + 400).forEach(d => lotto.delete(d.ref));
+          await lotto.commit();
+        }
+      }
+      scriviLocale(CHIAVE_GRUPPO, null);
+    }
+
+    finestraTrasferimento.addEventListener('click', async evento => {
+      const id = evento.target.id;
+      try {
+        if (id === 'trasferisci-mazzi') {
+          const quanti = mazziDaSpostare().length;
+          mazzi.push(...mazziDaSpostare());
+          salvaMazzi();
+          dopoAggiornamentoMazzi();
+          scriviMessaggioTrasferimento(`✓ ${quanti} ${quanti === 1 ? 'mazzo spostato' : 'mazzi spostati'} nel tuo account.`, false);
+          disegnaTrasferimento();
+        } else if (id === 'trasferisci-registro') {
+          evento.target.disabled = true;
+          const { fatte, saltate } = await importaRegistro();
+          scriviMessaggioTrasferimento(`✓ ${fatte} ${fatte === 1 ? 'partita importata' : 'partite importate'}${
+            saltate ? ` (${saltate} già presenti o non importabili)` : ''}.`, false);
+          disegnaTrasferimento();
+        } else if (id === 'elimina-vecchio-gruppo') {
+          if (!confirm('Eliminare dal server i dati del vecchio gruppo? Chi non li ha ancora importati non potrà più farlo.')) return;
+          evento.target.disabled = true;
+          scriviMessaggioTrasferimento('Elimino il vecchio gruppo…', false);
+          await eliminaVecchioGruppo();
+          scriviMessaggioTrasferimento('✓ Vecchio gruppo eliminato.', false);
+          disegnaTrasferimento();
+        }
+      } catch (errore) {
+        console.error(errore);
+        scriviMessaggioTrasferimento('Operazione non riuscita: controlla la connessione e riprova.', true);
+        disegnaTrasferimento();
+      }
+    });
+
+    document.getElementById('apri-trasferimento').addEventListener('click', () => {
+      finestraAccount.hidden = true;
+      apriTrasferimento();
+    });
+
+    // Al primo accesso con dei vecchi dati sul dispositivo, lo proponiamo una volta
+    function proponiTrasferimento() {
+      if (leggiLocale(CHIAVE_TRASFERIMENTO_PROPOSTO) || !haDatiDaTrasferire()) return;
+      scriviLocale(CHIAVE_TRASFERIMENTO_PROPOSTO, '1');
+      apriTrasferimento();
+    }
+
     // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
     // (Firebase si scarica solo quando serve, così chi non usa l'account non aspetta)
     function avviaAccount() {
@@ -5043,7 +5063,6 @@
 
     creaScintille(40);
     disegna();
-    avviaCondivisione();
     avviaAccount();
     aggiornaSchermoAcceso();
   </script>
