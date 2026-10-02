@@ -788,6 +788,35 @@
       background: var(--pericolo);
     }
 
+    /* ---------- Statistiche ---------- */
+    .stat-riquadri {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .stat-riquadro {
+      padding: 12px 10px;
+      border-radius: 14px;
+      text-align: center;
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(180, 140, 232, .22);
+    }
+    .stat-valore { display: block; font-size: 1.8rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+    .stat-etichetta { font-size: .78rem; color: var(--testo-tenue); }
+    .stat-riquadro.evidenza { border-color: rgba(255, 227, 138, .5); background: rgba(255, 227, 138, .08); }
+    .stat-riquadro.evidenza .stat-valore { color: #ffe38a; }
+    .stat-nota { text-align: center; color: var(--testo-tenue); font-size: .85rem; margin: 6px 0 0; }
+    #contenuto-statistiche h3, #contenuto-statistiche table { text-align: left; }
+
+    /* Colori preferiti: una barra per ogni colore di mana */
+    .stat-colori { display: grid; gap: 6px; }
+    .stat-colore { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+    .stat-colore img { width: 18px; height: 18px; flex-shrink: 0; }
+    .stat-barra { flex: 1; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+    .stat-barra span { display: block; height: 100%; border-radius: 999px; background: var(--c); }
+    .stat-colore .conteggio { min-width: 28px; text-align: right; color: var(--testo-tenue); font-variant-numeric: tabular-nums; }
+
     /* ---------- Inviti e tavolo ---------- */
     .inviti { display: grid; gap: 8px; max-width: 640px; margin: 0 auto; padding: 0 16px; }
     .inviti:not(:empty) { padding-top: 14px; }
@@ -1225,6 +1254,15 @@
     </div>
   </div>
 
+  <!-- Finestra con le statistiche (tue o di un amico) -->
+  <div class="finestra" id="finestra-statistiche" hidden>
+    <div class="pannello pannello-largo" role="dialog" aria-label="Statistiche">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2 id="titolo-statistiche">📊 Statistiche</h2>
+      <div id="contenuto-statistiche"></div>
+    </div>
+  </div>
+
   <!-- Finestra con i mazzi di un amico -->
   <div class="finestra" id="finestra-mazzi-amico" hidden>
     <div class="pannello pannello-largo" role="dialog" aria-label="Mazzi dell'amico">
@@ -1288,6 +1326,7 @@
         </div>
         <h3>Il tuo codice amico</h3>
         <p class="codice-gruppo" id="codice-amico"></p>
+        <div class="azioni"><button class="btn attivo" id="mie-statistiche">📊 Le mie statistiche</button></div>
         <p class="nota">Dallo agli amici: con questo codice possono mandarti una richiesta di amicizia.</p>
         <button class="link-semplice" id="esci-account">Esci dall'account</button>
       </div>
@@ -1400,6 +1439,7 @@
         <button class="btn" data-scheda="classifica">Giocatori</button>
         <button class="btn" data-scheda="comandanti">Comandanti</button>
         <button class="btn" data-scheda="storico">Storico</button>
+        <button class="btn" data-scheda="io" id="scheda-io" hidden>📊 Io</button>
       </div>
       <div id="contenuto-registro"></div>
     </div>
@@ -2536,6 +2576,15 @@
       document.querySelectorAll('[data-scheda]').forEach(b =>
         b.classList.toggle('attivo', b.dataset.scheda === schedaRegistro));
 
+      // "📊 Io": le tue statistiche, calcolate dallo storico del tuo account
+      if (schedaRegistro === 'io') {
+        contenutoRegistro.innerHTML = '<p class="registro-vuoto">Calcolo le statistiche…</p>';
+        statisticheMie()
+          .then(s => { if (schedaRegistro === 'io') contenutoRegistro.innerHTML = htmlStatistiche(s, true); })
+          .catch(() => { contenutoRegistro.innerHTML = '<p class="registro-vuoto">Non riesco a leggere le statistiche.</p>'; });
+        return;
+      }
+
       if (!registro.length) {
         contenutoRegistro.innerHTML = `<p class="registro-vuoto">Ancora nessuna partita registrata.<br>
           A fine partita premi <strong>🏆 Fine partita</strong> per salvarla qui.</p>`;
@@ -2555,6 +2604,10 @@
     }
 
     document.getElementById('apri-registro').addEventListener('click', () => {
+      // La scheda "📊 Io" c'è solo con l'account
+      const conAccount = mazziDellAccount();
+      document.getElementById('scheda-io').hidden = !conAccount;
+      if (!conAccount && schedaRegistro === 'io') schedaRegistro = 'classifica';
       disegnaRegistro();
       finestraRegistro.hidden = false;
     });
@@ -3795,8 +3848,12 @@
           finestraAccount.hidden = false;
         }
       }
-      if (mazziDellAccount()) { attivaMazziAccount(); attivaAmici(); attivaInviti(); rientraAlTavolo(); }
-      else { tornaAiMazziLocali(); disattivaAmici(); disattivaInviti(); esciDalTavolo(); }
+      if (mazziDellAccount()) {
+        attivaMazziAccount(); attivaAmici(); attivaInviti(); rientraAlTavolo();
+        statisticheMie().catch(() => {});   // tiene aggiornato il riepilogo per gli amici
+      } else {
+        tornaAiMazziLocali(); disattivaAmici(); disattivaInviti(); esciDalTavolo();
+      }
       aggiornaVistaAccount();
     }
 
@@ -4080,6 +4137,7 @@
         <button class="btn" data-rimuovi="${a.uid}">Annulla</button>`)).join('');
       document.getElementById('elenco-amici').innerHTML = confermati.length
         ? confermati.map(a => rigaAmico(a, `
+            <button class="btn" data-statistiche-amico="${a.uid}" title="Statistiche" aria-label="Statistiche di ${pulisci(a.nome)}">📊</button>
             <button class="btn" data-mazzi-amico="${a.uid}">🃏 Mazzi</button>
             <button class="btn" data-rimuovi="${a.uid}" data-amico-confermato>Rimuovi</button>`)).join('')
         : '<p class="vuoto-amici">Non hai ancora amici: chiedi il codice amico a qualcuno e mandagli una richiesta.</p>';
@@ -4146,10 +4204,14 @@
     });
 
     document.getElementById('vista-amici').addEventListener('click', async evento => {
-      const pulsante = evento.target.closest('[data-accetta], [data-rimuovi], [data-mazzi-amico]');
+      const pulsante = evento.target.closest('[data-accetta], [data-rimuovi], [data-mazzi-amico], [data-statistiche-amico]');
       if (!pulsante) return;
       try {
-        if (pulsante.dataset.accetta) {
+        if (pulsante.dataset.statisticheAmico) {
+          const uid = pulsante.dataset.statisticheAmico;
+          const amico = amici.find(a => a.uid === uid);
+          apriStatistiche(`📊 Le statistiche di ${amico.nome}`, () => statisticheAmico(uid), false);
+        } else if (pulsante.dataset.accetta) {
           await accettaAmicizia(pulsante.dataset.accetta);
         } else if (pulsante.dataset.rimuovi) {
           const amico = amici.find(a => a.uid === pulsante.dataset.rimuovi);
@@ -4428,11 +4490,192 @@
           proprietario: utente.uid,
           data: partita.data,
         });
+        statisticheMie().catch(() => {});   // aggiorna il riepilogo che vedono gli amici
       } catch (errore) {
         console.error(errore);
         mostraAvviso('⚠️ Partita salvata qui, ma non nello storico del tuo account');
       }
     }
+
+    // ---------- Statistiche personali ----------
+    // Si calcolano dallo storico delle partite giocate con l'account. Un riepilogo
+    // viene salvato in "utenti/{id}/pubblico/statistiche", così lo vedono gli amici.
+    function calcolaStatistiche(partite, uid) {
+      const s = {
+        giocate: 0, vinte: 0, serie: 0, migliorSerie: 0, ultima: null,
+        modalita: { commander: { g: 0, v: 0 }, thg: { g: 0, v: 0 } },
+        colori: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 },
+        comandanti: {}, avversari: {},
+      };
+      let serieCorrente = 0;
+      // Dalla più vecchia alla più recente, per contare le serie di vittorie
+      [...partite].sort((a, b) => a.data.localeCompare(b.data)).forEach(partita => {
+        // Troviamo il posto in cui sedevi tu
+        let mio = null;
+        let indice = -1;
+        partita.partecipanti.forEach(p => {
+          const m = (p.account || []).indexOf(uid);
+          if (m >= 0) { mio = p; indice = m; }
+        });
+        if (!mio) return;
+
+        const vinto = mio.vincitore === true;
+        s.giocate++;
+        if (vinto) s.vinte++;
+        const modalita = s.modalita[partita.modalita === 'thg' ? 'thg' : 'commander'];
+        modalita.g++;
+        if (vinto) modalita.v++;
+        serieCorrente = vinto ? serieCorrente + 1 : 0;
+        s.migliorSerie = Math.max(s.migliorSerie, serieCorrente);
+        s.ultima = partita.data;
+
+        const nomeComandante = String(mio.comandanti?.[indice] || '').trim();
+        const identita = Array.isArray(mio.identita?.[indice]) ? mio.identita[indice] : null;
+        if (nomeComandante) {
+          const chiave = nomeComandante.toLowerCase();
+          const riga = s.comandanti[chiave] || (s.comandanti[chiave] = { nome: nomeComandante, identita, g: 0, v: 0 });
+          riga.g++;
+          if (vinto) riga.v++;
+          riga.identita = riga.identita || identita;
+        }
+        if (identita) (identita.length ? identita : ['C']).forEach(c => { if (c in s.colori) s.colori[c]++; });
+
+        // Con chi hai giocato: tutti gli altri seduti al tavolo
+        partita.partecipanti.forEach(p => (p.giocatori || []).forEach((nome, m) => {
+          if (p === mio && m === indice) return;
+          const chiave = p.account?.[m] || `nome:${String(nome).toLowerCase()}`;
+          const riga = s.avversari[chiave] || (s.avversari[chiave] = { nome, insieme: 0, vittorieMie: 0 });
+          riga.nome = nome;   // teniamo il nome più recente
+          riga.insieme++;
+          if (vinto) riga.vittorieMie++;
+        }));
+      });
+      s.serie = serieCorrente;
+      s.comandanti = Object.values(s.comandanti).sort((a, b) => b.g - a.g || b.v - a.v).slice(0, 8);
+      s.avversari = Object.values(s.avversari).sort((a, b) => b.insieme - a.insieme).slice(0, 8);
+      return s;
+    }
+
+    // Il riepilogo di un amico arriva da fuori: teniamo solo valori del tipo giusto
+    function statisticheSicure(s) {
+      const n = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
+      const t = v => (typeof v === 'string' ? v.slice(0, 60) : '');
+      const conteggio = x => ({ g: n(x?.g), v: n(x?.v) });
+      const coloriSicuri = v => (Array.isArray(v) ? v.filter(c => MANA[c]) : null);
+      return {
+        giocate: n(s.giocate), vinte: n(s.vinte), serie: n(s.serie), migliorSerie: n(s.migliorSerie),
+        ultima: typeof s.ultima === 'string' ? s.ultima : null,
+        modalita: { commander: conteggio(s.modalita?.commander), thg: conteggio(s.modalita?.thg) },
+        colori: Object.fromEntries(Object.keys(MANA).map(c => [c, n(s.colori?.[c])])),
+        comandanti: (Array.isArray(s.comandanti) ? s.comandanti : []).slice(0, 8)
+          .map(c => ({ nome: t(c.nome), identita: coloriSicuri(c.identita), g: n(c.g), v: n(c.v) })),
+        avversari: (Array.isArray(s.avversari) ? s.avversari : []).slice(0, 8)
+          .map(a => ({ nome: t(a.nome), insieme: n(a.insieme), vittorieMie: n(a.vittorieMie) })),
+      };
+    }
+
+    const percentuale = (v, g) => (g ? `${Math.round(v / g * 100)}%` : '–');
+
+    function htmlStatistiche(s, proprie) {
+      if (!s.giocate) {
+        return `<p class="registro-vuoto">${proprie
+          ? 'Ancora nessuna partita con il tuo account.<br>Siediti al tavolo come <strong>⭐ Io</strong> e a fine partita premi <strong>🏆 Fine partita</strong>.'
+          : 'Ancora nessuna partita registrata.'}</p>`;
+      }
+      const riquadro = (valore, etichetta, evidenza) => `
+        <div class="stat-riquadro ${evidenza ? 'evidenza' : ''}">
+          <span class="stat-valore">${valore}</span><span class="stat-etichetta">${etichetta}</span>
+        </div>`;
+      const { commander, thg } = s.modalita;
+      const ultima = s.ultima ? new Date(s.ultima).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+      const totaleColori = Math.max(1, ...Object.values(s.colori));
+      const colori = Object.entries(s.colori).filter(([, quante]) => quante).sort((a, b) => b[1] - a[1]).map(([c, quante]) => `
+        <div class="stat-colore" style="--c: var(--mana-${c})">
+          ${simboloMana(c)}
+          <div class="stat-barra"><span style="width: ${quante / totaleColori * 100}%"></span></div>
+          <span class="conteggio">${quante}</span>
+        </div>`).join('');
+
+      const avversari = s.avversari.map(a => `
+        <tr>
+          <td>${pulisci(a.nome)}</td>
+          <td class="numerico">${a.insieme}</td>
+          <td class="numerico">${a.vittorieMie}</td>
+          <td class="numerico">${percentuale(a.vittorieMie, a.insieme)}</td>
+        </tr>`).join('');
+
+      return `
+        <div class="stat-riquadri">
+          ${riquadro(s.giocate, 'Partite')}
+          ${riquadro(s.vinte, 'Vittorie')}
+          ${riquadro(percentuale(s.vinte, s.giocate), '% vittorie')}
+          ${riquadro(s.serie, '🔥 Serie attuale', s.serie >= 2)}
+        </div>
+        <p class="stat-nota">
+          Commander: ${commander.g} partite (${percentuale(commander.v, commander.g)} vinte) ·
+          Two-Headed Giant: ${thg.g} partite (${percentuale(thg.v, thg.g)} vinte)<br>
+          Miglior serie: ${s.migliorSerie} ${s.migliorSerie === 1 ? 'vittoria' : 'vittorie'} di fila${ultima ? ` · Ultima partita: ${ultima}` : ''}
+        </p>
+
+        ${s.comandanti.length ? `<h3>Comandanti più giocati</h3>
+          ${tabellaClassifica(s.comandanti.map(c => ({ nome: c.nome, identita: c.identita, giocate: c.g, vinte: c.v })), 'Comandante')}` : ''}
+
+        ${colori ? `<h3>Colori preferiti</h3><div class="stat-colori">${colori}</div>` : ''}
+
+        ${avversari ? `<h3>Con chi giochi di più</h3>
+          <table class="classifica">
+            <thead><tr><th>Giocatore</th><th class="numerico">Insieme</th><th class="numerico">Tue vittorie</th><th class="numerico">%</th></tr></thead>
+            <tbody>${avversari}</tbody>
+          </table>` : ''}`;
+    }
+
+    async function leggiStoricoMio() {
+      const domanda = fs.query(fs.collection(db, 'storico'), fs.where('membri', 'array-contains', utente.uid));
+      const elenco = await fs.getDocs(domanda);
+      return elenco.docs.flatMap(d => {
+        try {
+          const partita = JSON.parse(d.data().json);
+          return Array.isArray(partita.partecipanti) && typeof partita.data === 'string' ? [partita] : [];
+        } catch (e) {
+          return [];
+        }
+      });
+    }
+
+    // Calcola le tue statistiche e aggiorna il riepilogo che vedono gli amici
+    async function statisticheMie() {
+      const s = calcolaStatistiche(await leggiStoricoMio(), utente.uid);
+      fs.setDoc(fs.doc(db, 'utenti', utente.uid, 'pubblico', 'statistiche'), { json: JSON.stringify(s) })
+        .catch(errore => console.error(errore));
+      return s;
+    }
+
+    async function statisticheAmico(uid) {
+      const documento = await fs.getDoc(fs.doc(db, 'utenti', uid, 'pubblico', 'statistiche'));
+      if (!documento.exists()) return calcolaStatistiche([], uid);
+      return statisticheSicure(JSON.parse(documento.data().json));
+    }
+
+    const finestraStatistiche = document.getElementById('finestra-statistiche');
+
+    async function apriStatistiche(titolo, calcola, proprie) {
+      document.getElementById('titolo-statistiche').textContent = titolo;
+      const contenuto = document.getElementById('contenuto-statistiche');
+      contenuto.innerHTML = '<p class="registro-vuoto">Calcolo le statistiche…</p>';
+      finestraStatistiche.hidden = false;
+      try {
+        contenuto.innerHTML = htmlStatistiche(await calcola(), proprie);
+      } catch (errore) {
+        console.error(errore);
+        contenuto.innerHTML = '<p class="registro-vuoto">Non riesco a leggere le statistiche. Sei connesso a internet?</p>';
+      }
+    }
+
+    document.getElementById('mie-statistiche').addEventListener('click', () => {
+      finestraAccount.hidden = true;
+      apriStatistiche(`📊 Le statistiche di ${profilo.nome}`, statisticheMie, true);
+    });
 
     // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
     // (Firebase si scarica solo quando serve, così chi non usa l'account non aspetta)
