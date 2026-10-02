@@ -223,17 +223,110 @@
       transition: transform .1s, box-shadow .15s;
     }
     .rapido:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 24px rgba(180, 140, 232, .85); }
+    /* Su schermi larghi la colonna a destra è delle schede piccole: i pulsanti vanno a sinistra */
+    @media (min-width: 761px) {
+      .azioni-rapide { right: auto; left: 16px; }
+    }
     .rapido:active { transform: scale(.92); }
 
     /* ---------- Il tavolo con le schede dei giocatori ---------- */
+    /* La scheda grande (quella scelta) e, a lato, le schede piccole degli altri */
     .tavolo {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 18px;
+      grid-template-columns: minmax(0, 560px) 220px;
+      justify-content: center;
+      align-items: start;
+      gap: 16px;
       padding: 8px 16px 90px;   /* spazio in fondo per i pulsanti fluttuanti */
-      max-width: 820px;   /* al massimo 2 schede per riga, come un tavolo 2×2 */
       margin: 0 auto;
     }
+    .schede-piccole { display: grid; gap: 10px; }
+
+    /* Sul telefono le schede piccole stanno in una riga sopra quella grande */
+    @media (max-width: 760px) {
+      .tavolo { grid-template-columns: minmax(0, 1fr); }
+      .schede-piccole { order: -1; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+    }
+
+    .carta-piccola {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      min-width: 0;
+      padding: 10px 12px;
+      text-align: left;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      background:
+        linear-gradient(170deg, rgb(58, 30, 98), rgb(24, 11, 44)) padding-box,
+        var(--bordo) border-box;
+      box-shadow: var(--alone);
+      transition: transform .15s, filter .3s, opacity .3s;
+    }
+    .carta-piccola.con-sfondo {
+      background:
+        linear-gradient(170deg, rgba(40, 18, 72, .55), rgba(20, 8, 38, .92) 70%) padding-box,
+        var(--immagine) center 25% / cover padding-box,
+        var(--bordo) border-box;
+    }
+    .carta-piccola:hover { transform: translateY(-2px); }
+    .carta-piccola.sconfitto { filter: grayscale(.85); opacity: .6; }
+    .nome-piccola, .comandante-piccola {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nome-piccola { font-weight: 700; font-size: .9rem; }
+    .comandante-piccola { min-height: 1.1em; font-size: .75rem; font-style: italic; color: var(--accento); }
+    .vita-piccola { font-size: 2rem; font-weight: 800; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; }
+    .veleno-piccola { font-size: .75rem; color: var(--testo-tenue); }
+
+    /* ---------- Teschietto quando un giocatore perde ---------- */
+    .teschio-sconfitta {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 10px;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(36, 17, 64, .6), transparent 60%);
+      animation: velo-teschio 2.8s ease forwards;
+    }
+    .teschio { filter: drop-shadow(0 0 22px rgba(180, 140, 232, .9)); animation: salta-teschio 2.8s cubic-bezier(.2, .9, .3, 1.3) forwards; }
+    .teschio .mascella { transform-origin: 50px 74px; animation: ride-teschio .25s ease-in-out 4 .5s; }
+    .teschio-sconfitta p {
+      margin: 0;
+      padding: 0 16px;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 0 12px rgba(255, 92, 138, .85);
+      animation: compare-testo 2.8s ease forwards;
+    }
+    @keyframes salta-teschio {
+      0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+      18%  { transform: scale(1.2) rotate(8deg); opacity: 1; }
+      28%  { transform: scale(.95) rotate(-6deg); }
+      38%  { transform: scale(1) rotate(4deg); }
+      48%  { transform: rotate(-2deg); }
+      58%  { transform: rotate(0); }
+      80%  { transform: translateY(-6px); opacity: 1; }
+      100% { transform: translateY(-34px) scale(.9); opacity: 0; }
+    }
+    @keyframes ride-teschio { 50% { transform: translateY(4px); } }
+    @keyframes compare-testo {
+      0%, 15% { opacity: 0; transform: translateY(10px); }
+      30%, 80% { opacity: 1; transform: none; }
+      100% { opacity: 0; }
+    }
+    @keyframes velo-teschio { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
 
     .carta {
       /* Questi tre valori li imposta JavaScript in base ai colori scelti */
@@ -788,6 +881,86 @@
       background: var(--pericolo);
     }
 
+    /* ---------- Menu laterale ---------- */
+    .apri-menu {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 8;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border-radius: 14px;
+      background: rgba(36, 17, 64, .85);
+      border: 1px solid rgba(180, 140, 232, .4);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+      backdrop-filter: blur(6px);
+    }
+    .apri-menu span { width: 20px; height: 2px; border-radius: 2px; background: var(--lavanda); }
+    .apri-menu:hover { background: rgba(107, 63, 160, .9); }
+    .pallino-menu {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--pericolo);
+      box-shadow: 0 0 6px var(--pericolo);
+    }
+
+    .velo-menu { position: fixed; inset: 0; z-index: 11; background: rgba(10, 4, 20, .55); }
+    .menu-laterale {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 12;
+      width: min(290px, 82vw);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px 12px;
+      background: linear-gradient(180deg, rgb(46, 22, 82), rgb(22, 10, 40));
+      border-right: 1px solid rgba(180, 140, 232, .35);
+      box-shadow: 8px 0 30px rgba(0, 0, 0, .5);
+      transform: translateX(-105%);
+      transition: transform .25s ease;
+    }
+    .menu-laterale.aperto { transform: translateX(0); }
+    .testa-menu {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px 14px;
+      color: var(--lavanda);
+      font-size: 1.1rem;
+    }
+    .chiudi-menu { background: none; color: var(--testo-tenue); font-size: 1.1rem; }
+    .voce-menu {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: none;
+      text-align: left;
+      font-size: 1rem;
+      color: var(--testo);
+    }
+    .voce-menu:hover { background: rgba(180, 140, 232, .15); }
+    .voce-menu.attivo { background: rgba(180, 140, 232, .25); color: #fff; box-shadow: inset 3px 0 0 var(--viola-chiaro); }
+    .voce-account {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(180, 140, 232, .3);
+    }
+    .voce-account.collegato { color: var(--lavanda); border-color: var(--viola-chiaro); }
+    .separa-menu { height: 1px; margin: 10px 6px; background: rgba(180, 140, 232, .2); }
+
     /* ---------- Statistiche ---------- */
     .stat-riquadri {
       display: grid;
@@ -871,19 +1044,6 @@
     .campi-accesso input:focus { outline: none; border-color: var(--viola-chiaro); }
     #finestra-account .stato-import { text-align: center; margin-bottom: 0; }
     #finestra-account h3 { text-align: center; }
-
-    /* ---------- Schede delle sezioni (Segnapunti / Mazzi) ---------- */
-    .viste { display: flex; justify-content: center; gap: 6px; padding: 14px 16px 0; }
-    .scheda-vista {
-      background: none;
-      padding: 8px 18px;
-      font-weight: 600;
-      color: var(--testo-tenue);
-      border-bottom: 2px solid transparent;
-      transition: color .15s, border-color .15s;
-    }
-    .scheda-vista:hover { color: var(--testo); }
-    .scheda-vista.attivo { color: var(--lavanda); border-bottom-color: var(--viola-chiaro); }
 
     /* ---------- Sezione mazzi ---------- */
     .vista-mazzi { max-width: 1000px; margin: 0 auto; padding: 8px 16px 32px; }
@@ -1109,6 +1269,27 @@
     </div>
   </div>
 
+  <!-- Pulsante del menu (in alto a sinistra) -->
+  <button class="apri-menu" id="apri-menu" aria-label="Apri il menu" aria-expanded="false" aria-controls="menu-laterale">
+    <span></span><span></span><span></span>
+    <i class="pallino-menu" id="pallino-menu" hidden></i>
+  </button>
+
+  <!-- Menu laterale: account e sezioni del sito -->
+  <div class="velo-menu" id="velo-menu" hidden></div>
+  <nav class="menu-laterale" id="menu-laterale" aria-label="Menu">
+    <div class="testa-menu">
+      <strong>Commander Hub</strong>
+      <button class="chiudi-menu" id="chiudi-menu" aria-label="Chiudi il menu">✕</button>
+    </div>
+    <button class="voce-menu voce-account" id="pulsante-account">👤 Accedi</button>
+    <div class="separa-menu"></div>
+    <button class="voce-menu attivo" data-vista="segnapunti">🎯 Segnapunti</button>
+    <button class="voce-menu" data-vista="mazzi">🃏 Mazzi</button>
+    <button class="voce-menu" data-vista="amici">👥 Amici <span class="contatore-richieste" id="contatore-richieste" hidden></span></button>
+    <button class="voce-menu" id="apri-registro">📜 Registro</button>
+  </nav>
+
   <header>
     <h1>Commander Hub</h1>
     <div class="simboli-mana">
@@ -1120,17 +1301,9 @@
     </div>
     <p class="sottotitolo">Il punto di ritrovo del gruppo Commander</p>
     <div class="barra-account">
-      <button class="indicatore-gruppo" id="pulsante-account">👤 Accedi</button>
       <button class="indicatore-gruppo" id="indicatore-gruppo">⚪ Solo questo dispositivo</button>
     </div>
   </header>
-
-  <!-- Le due sezioni del sito -->
-  <nav class="viste">
-    <button class="scheda-vista attivo" data-vista="segnapunti">🎯 Segnapunti</button>
-    <button class="scheda-vista" data-vista="mazzi">🃏 Mazzi</button>
-    <button class="scheda-vista" data-vista="amici">👥 Amici <span class="contatore-richieste" id="contatore-richieste" hidden></span></button>
-  </nav>
 
   <!-- Inviti ricevuti dagli amici (li riempie JavaScript) -->
   <div class="inviti" id="inviti"></div>
@@ -1139,7 +1312,6 @@
   <div id="vista-segnapunti">
   <nav class="barra">
     <button class="btn" id="nuova-partita">↺ Nuova partita</button>
-    <button class="btn" id="apri-registro">📜 Registro</button>
   </nav>
   <p class="info-partita" id="info-partita"></p>
 
@@ -1737,10 +1909,87 @@
     }
 
     // Ridisegna tutta la pagina a partire dallo stato attuale
+    // ---------- Quale scheda si vede in grande ----------
+    // Di solito la tua (quella collegata al tuo account), altrimenti la prima.
+    // Toccando una scheda piccola, diventa lei quella grande.
+    var postoScelto = null;
+
+    function indicePrincipale() {
+      const posti = postiInGioco();
+      if (postoScelto !== null && postoScelto < posti.length) return postoScelto;
+      if (utente) {
+        const mio = posti.findIndex(p => (p.account || []).includes(utente.uid));
+        if (mio >= 0) return mio;
+      }
+      return 0;
+    }
+
+    // La versione compatta di una scheda: nome, comandante e punti vita
+    function schedaPiccola(posto, i, regole) {
+      const sconfitto = eSconfitto(posto, regole);
+      const sfondo = sfondoSicuro(posto.sfondo);
+      const nome = pulisci(nomePosto(posto));
+      return `
+        <button class="carta-piccola ${sconfitto ? 'sconfitto' : ''} ${sfondo ? 'con-sfondo' : ''}" data-seleziona="${i}"
+                style="${stileColori(posto.colori)} ${sfondo ? `--immagine: url('${sfondo}');` : ''}"
+                aria-label="Mostra in grande la scheda di ${nome}">
+          <span class="nome-piccola">${sconfitto ? '💀 ' : ''}${nome}</span>
+          <span class="comandante-piccola">${pulisci(posto.comandanti.filter(c => c.trim()).join(' & '))}</span>
+          <span class="vita-piccola">${posto.vita}</span>
+          ${posto.veleno ? `<span class="veleno-piccola">🧪 ${posto.veleno}</span>` : ''}
+        </button>`;
+    }
+
+    // ---------- Teschietto per chi perde ----------
+    var sconfittiPrima = null;   // chi era già sconfitto all'ultimo disegno (null = primo disegno)
+
+    const TESCHIO = `
+      <svg viewBox="0 0 100 100" width="150" height="150" aria-hidden="true">
+        <path d="M50 6C27 6 12 22 12 43c0 12 6 21 14 26v4h48v-4c8-5 14-14 14-26C88 22 73 6 50 6z" fill="#f3ecff"/>
+        <ellipse cx="34" cy="44" rx="11" ry="12" fill="#241140"/>
+        <ellipse cx="66" cy="44" rx="11" ry="12" fill="#241140"/>
+        <circle cx="38" cy="40" r="3.5" fill="#b48ce8"/>
+        <circle cx="70" cy="40" r="3.5" fill="#b48ce8"/>
+        <path d="M50 54l-6 10h12z" fill="#241140"/>
+        <g class="mascella">
+          <rect x="27" y="72" width="46" height="18" rx="7" fill="#f3ecff"/>
+          <path d="M39 74v13M50 74v13M61 74v13" stroke="#241140" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>`;
+
+    function mostraTeschio(nome) {
+      const scena = document.createElement('div');
+      scena.className = 'teschio-sconfitta';
+      scena.setAttribute('role', 'status');
+      scena.innerHTML = `<div class="teschio">${TESCHIO}</div><p>${pulisci(nome)} è stato sconfitto!</p>`;
+      document.body.appendChild(scena);
+      if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+      setTimeout(() => scena.remove(), 2900);
+    }
+
+    // Confronta chi è sconfitto adesso con prima: ai nuovi sconfitti tocca il teschietto
+    function controllaSconfitti(posti, regole) {
+      const adesso = new Set(posti.flatMap((posto, i) =>
+        eSconfitto(posto, regole) ? [`${stato.modalita}-${i}`] : []));
+      if (sconfittiPrima) {
+        adesso.forEach(chiave => {
+          if (!sconfittiPrima.has(chiave)) mostraTeschio(nomePosto(posti[Number(chiave.split('-')[1])]));
+        });
+      }
+      sconfittiPrima = adesso;
+    }
+
     function disegna() {
       const partita = partitaAttuale();
       const regole = regoleAttuali();
-      tavolo.innerHTML = postiInGioco().map((posto, i) => schedaPosto(posto, i, partita, regole)).join('');
+      const posti = postiInGioco();
+      const principale = indicePrincipale();
+      tavolo.innerHTML = `
+        <div class="scheda-grande">${schedaPosto(posti[principale], principale, partita, regole)}</div>
+        <aside class="schede-piccole" aria-label="Gli altri giocatori">
+          ${posti.map((posto, i) => (i === principale ? '' : schedaPiccola(posto, i, regole))).join('')}
+        </aside>`;
+      controllaSconfitti(posti, regole);
 
       document.getElementById('info-partita').textContent = stato.modalita === 'thg'
         ? 'Two-Headed Giant · 2 squadre'
@@ -1763,6 +2012,14 @@
 
     // ---------- Click sui pulsanti delle schede ----------
     tavolo.addEventListener('click', evento => {
+      // Tocco su una scheda piccola: diventa lei quella grande
+      const piccola = evento.target.closest('[data-seleziona]');
+      if (piccola) {
+        postoScelto = Number(piccola.dataset.seleziona);
+        disegna();
+        return;
+      }
+
       const pulsante = evento.target.closest('[data-azione]');
       if (!pulsante) return;
 
@@ -2668,6 +2925,25 @@
     }
     document.querySelectorAll('[data-vista]').forEach(b =>
       b.addEventListener('click', () => mostraVista(b.dataset.vista)));
+
+    // ---------- Menu laterale ----------
+    const menuLaterale = document.getElementById('menu-laterale');
+    const veloMenu = document.getElementById('velo-menu');
+    const pulsanteMenu = document.getElementById('apri-menu');
+
+    function apriMenu(aperto) {
+      menuLaterale.classList.toggle('aperto', aperto);
+      veloMenu.hidden = !aperto;
+      pulsanteMenu.setAttribute('aria-expanded', String(aperto));
+    }
+    pulsanteMenu.addEventListener('click', () => apriMenu(!menuLaterale.classList.contains('aperto')));
+    document.getElementById('chiudi-menu').addEventListener('click', () => apriMenu(false));
+    veloMenu.addEventListener('click', () => apriMenu(false));
+    // Scegliendo una voce il menu si chiude da solo
+    menuLaterale.addEventListener('click', evento => {
+      if (evento.target.closest('.voce-menu')) apriMenu(false);
+    });
+    document.addEventListener('keydown', evento => { if (evento.key === 'Escape') apriMenu(false); });
 
     // ---------- Lettura della lista incollata ----------
     // Trasforma righe come "1x Sol Ring (CMM) 410 *F* [Ramp]" in { quantita: 1, nome: "Sol Ring" }
@@ -4123,6 +4399,7 @@
       const contatore = document.getElementById('contatore-richieste');
       contatore.hidden = !ricevute.length;
       contatore.textContent = ricevute.length;
+      document.getElementById('pallino-menu').hidden = !ricevute.length;   // pallino rosso sul pulsante ☰
       if (!conAccount) return;
 
       document.getElementById('mio-codice-amico').textContent = profilo.codiceAmico;
