@@ -185,7 +185,7 @@
       letter-spacing: .1em;
       color: var(--viola-chiaro);
     }
-    .riga-giocatore { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; }
+    .riga-giocatore { padding-bottom: 8px; border-bottom: 1px solid rgba(180, 140, 232, .12); }
     .riga-giocatore .scegli-mazzo { width: 52px; cursor: pointer; }
     .riga-giocatore input {
       min-width: 0;
@@ -788,6 +788,32 @@
       background: var(--pericolo);
     }
 
+    /* ---------- Inviti e tavolo ---------- */
+    .inviti { display: grid; gap: 8px; max-width: 640px; margin: 0 auto; padding: 0 16px; }
+    .inviti:not(:empty) { padding-top: 14px; }
+    .invito {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(255, 227, 138, .14), rgba(180, 140, 232, .14));
+      border: 1px solid rgba(255, 227, 138, .45);
+      box-shadow: 0 0 18px rgba(255, 227, 138, .15);
+    }
+    .invito span { flex: 1; min-width: 180px; }
+    .invito .btn { padding: 6px 14px; }
+    .ignora-invito { background: none; color: var(--testo-tenue); font-size: 1rem; }
+    #finestra-tavolo .elenco-amici { text-align: left; margin-bottom: 12px; }
+    .etichetta-ruolo { font-size: .75rem; color: #ffe38a; }
+
+    /* Riga giocatore nella finestra "Nuova partita": due linee */
+    .riga-giocatore .linea { display: flex; gap: 6px; }
+    .riga-giocatore .linea + .linea { margin-top: 6px; }
+    .riga-giocatore .linea input { flex: 1; }
+    .riga-giocatore .scegli-account { max-width: 46%; }
+
     /* ---------- Account ---------- */
     .barra-account { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
     #pulsante-account.collegato { color: var(--lavanda); border-color: var(--viola-chiaro); }
@@ -1077,6 +1103,9 @@
     <button class="scheda-vista" data-vista="amici">👥 Amici <span class="contatore-richieste" id="contatore-richieste" hidden></span></button>
   </nav>
 
+  <!-- Inviti ricevuti dagli amici (li riempie JavaScript) -->
+  <div class="inviti" id="inviti"></div>
+
   <!-- ===================== SEZIONE SEGNAPUNTI ===================== -->
   <div id="vista-segnapunti">
   <nav class="barra">
@@ -1178,6 +1207,21 @@
       </div>
       <h3>I tuoi amici</h3>
       <div class="elenco-amici" id="elenco-amici"></div>
+    </div>
+  </div>
+
+  <!-- Finestra del tavolo: chi gioca insieme a te -->
+  <div class="finestra" id="finestra-tavolo" hidden>
+    <div class="pannello" role="dialog" aria-label="Tavolo">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>🎲 Il tavolo</h2>
+      <p class="testo-gruppo">Chi siede al tavolo vede e aggiorna la partita in tempo reale.</p>
+      <div class="elenco-amici" id="membri-tavolo"></div>
+      <p class="nota" id="nota-tavolo"></p>
+      <div class="azioni">
+        <button class="btn" id="esci-tavolo">🚪 Esci dal tavolo</button>
+        <button class="btn" id="chiudi-tavolo">Chiudi il tavolo per tutti</button>
+      </div>
     </div>
   </div>
 
@@ -1443,6 +1487,8 @@
           membri: [...p.membri],
           // Nome del comandante di ciascun giocatore (vuoto = non indicato)
           comandanti: p.comandanti ? [...p.comandanti] : p.membri.map(() => ''),
+          // Account di ciascun giocatore (null = ospite senza account)
+          account: p.account ? [...p.account] : p.membri.map(() => null),
           // Identità di colore di ogni comandante verificato su Scryfall (null = non verificato)
           identita: p.identita ? [...p.identita] : p.membri.map(() => null),
           // Indirizzo dell'illustrazione di ogni comandante (null = non disponibile)
@@ -1473,6 +1519,7 @@
               delete posto.mana;
               // Le versioni precedenti non avevano i nomi dei comandanti
               if (!posto.comandanti) posto.comandanti = posto.membri.map(() => '');
+              if (!posto.account) posto.account = posto.membri.map(() => null);
               if (!posto.identita) posto.identita = posto.membri.map(() => null);
               if (!posto.arte) posto.arte = posto.membri.map(() => null);
               if (posto.sfondo === undefined) posto.sfondo = null;
@@ -2031,6 +2078,7 @@
       const copia = partita => ({
         posti: partita.posti.map(posto => ({
           membri: [...posto.membri],
+          account: posto.account ? [...posto.account] : posto.membri.map(() => null),
           comandanti: [...posto.comandanti],
           identita: posto.identita.map(x => (x ? [...x] : null)),
           arte: [...posto.arte],
@@ -2048,16 +2096,42 @@
     }
 
     // Una riga per ogni giocatore: nome e comandante (con i suggerimenti di Scryfall)
+    // I mazzi tra cui scegliere per un giocatore: quelli di un amico se il posto
+    // è suo, altrimenti i tuoi (un ospite può sempre prenderne uno in prestito)
+    function mazziPerAccount(uid) {
+      if (uid && utente && uid !== utente.uid) return mazziDegliAmici.get(uid) || [];
+      return mazzi;
+    }
+
     function disegnaGiocatoriNuova() {
       // Menu dei mazzi salvati (solo se ce n'è almeno uno con il comandante scelto)
-      const mazziPronti = mazzi.filter(cartaComandante);
-      const menuMazzi = (i, m) => !mazziPronti.length ? '' : `
-        <select class="selettore scegli-mazzo" data-i="${i}" data-m="${m}"
-                title="Usa un mazzo salvato" aria-label="Usa un mazzo salvato">
-          <option value="">🃏</option>
-          ${mazziPronti.map(mazzo => `<option value="${mazzo.id}">${pulisci(mazzo.nome)}${
-            mazzo.proprietario ? ` (${pulisci(mazzo.proprietario)})` : ''}</option>`).join('')}
-        </select>`;
+      const menuMazzi = (posto, i, m) => {
+        const pronti = mazziPerAccount(posto.account[m]).filter(cartaComandante);
+        return !pronti.length ? '' : `
+          <select class="selettore scegli-mazzo" data-i="${i}" data-m="${m}"
+                  title="Usa un mazzo salvato" aria-label="Usa un mazzo salvato">
+            <option value="">🃏</option>
+            ${pronti.map(mazzo => `<option value="${pulisci(mazzo.id)}">${pulisci(mazzo.nome)}${
+              mazzo.proprietario ? ` (${pulisci(mazzo.proprietario)})` : ''}</option>`).join('')}
+          </select>`;
+      };
+
+      // Menu "chi è": ospite, tu o un tuo amico. Gli amici scelti vengono invitati al tavolo.
+      // Solo chi ha creato il tavolo può cambiare chi siede.
+      const puoScegliere = mazziDellAccount() && (!tavoloAttivo || tavoloAttivo.proprietario === utente.uid);
+      const menuAccount = (posto, i, m) => {
+        if (!puoScegliere) return '';
+        const scelto = posto.account[m];
+        const opzione = (valore, testo) =>
+          `<option value="${pulisci(valore)}" ${valore === (scelto || '') ? 'selected' : ''}>${testo}</option>`;
+        return `
+          <select class="selettore scegli-account" data-i="${i}" data-m="${m}"
+                  title="Chi è questo giocatore" aria-label="Account del giocatore">
+            ${opzione('', '👤 Ospite')}
+            ${opzione(utente.uid, `⭐ Io (${pulisci(profilo.nome)})`)}
+            ${amici.filter(a => a.stato === 'amici').map(a => opzione(a.uid, `👥 ${pulisci(a.nome)}`)).join('')}
+          </select>`;
+      };
 
       giocatoriNuova.innerHTML = postiScelti().map((posto, i) => {
         const titolo = scelta.modalita === 'thg' ? `<div class="titolo-squadra">Squadra ${i + 1}</div>` : '';
@@ -2066,13 +2140,18 @@
           const statoNome = !comandante ? '' : posto.identita[m] ? 'verificato' : 'da-verificare';
           return `
             <div class="riga-giocatore">
-              <input value="${pulisci(nome)}" maxlength="20" placeholder="Nome giocatore"
-                     data-bozza="1" data-i="${i}" data-m="${m}" data-campo="membri" aria-label="Nome giocatore">
-              <input class="comandante-bozza ${statoNome}" value="${pulisci(comandante)}" maxlength="60"
-                     placeholder="Comandante…" autocomplete="off" spellcheck="false"
-                     title="${statoNome === 'da-verificare' ? 'Comandante non trovato su Scryfall' : ''}"
-                     data-bozza="1" data-i="${i}" data-m="${m}" data-campo="comandanti" aria-label="Comandante">
-              ${menuMazzi(i, m)}
+              <div class="linea">
+                <input value="${pulisci(nome)}" maxlength="20" placeholder="Nome giocatore"
+                       data-bozza="1" data-i="${i}" data-m="${m}" data-campo="membri" aria-label="Nome giocatore">
+                ${menuAccount(posto, i, m)}
+              </div>
+              <div class="linea">
+                <input class="comandante-bozza ${statoNome}" value="${pulisci(comandante)}" maxlength="60"
+                       placeholder="Comandante…" autocomplete="off" spellcheck="false"
+                       title="${statoNome === 'da-verificare' ? 'Comandante non trovato su Scryfall' : ''}"
+                       data-bozza="1" data-i="${i}" data-m="${m}" data-campo="comandanti" aria-label="Comandante">
+                ${menuMazzi(posto, i, m)}
+              </div>
             </div>`;
         }).join('');
         return titolo + righe;
@@ -2098,14 +2177,31 @@
     giocatoriNuova.addEventListener('change', evento => {
       const campo = evento.target;
 
-      // Scelta di un mazzo salvato: compila nome del proprietario e comandante
-      if (campo.classList.contains('scegli-mazzo')) {
-        const mazzo = mazzi.find(x => x.id === campo.value);
-        if (!mazzo) return;
-        const comandante = cartaComandante(mazzo);
+      // Scelta di chi siede a questo posto: tu, un amico (che verrà invitato) o un ospite
+      if (campo.classList.contains('scegli-account')) {
         const posto = bozza.posti[campo.dataset.i];
         const m = campo.dataset.m;
-        if (mazzo.proprietario) posto.membri[m] = mazzo.proprietario;
+        const uid = campo.value || null;
+        posto.account[m] = uid;
+        if (uid === utente.uid) posto.membri[m] = profilo.nome;
+        else if (uid) {
+          posto.membri[m] = amici.find(a => a.uid === uid)?.nome || posto.membri[m];
+          // Carichiamo i suoi mazzi, così si possono scegliere dal menu 🃏
+          caricaMazziAmico(uid).then(disegnaGiocatoriNuova).catch(() => {});
+        }
+        disegnaGiocatoriNuova();
+        return;
+      }
+
+      // Scelta di un mazzo salvato: compila nome del proprietario e comandante
+      if (campo.classList.contains('scegli-mazzo')) {
+        const posto = bozza.posti[campo.dataset.i];
+        const m = campo.dataset.m;
+        const mazzo = mazziPerAccount(posto.account[m]).find(x => x.id === campo.value);
+        if (!mazzo) return;
+        const comandante = cartaComandante(mazzo);
+        // Il nome del giocatore lo cambiamo solo per gli ospiti: per gli account c'è già quello giusto
+        if (mazzo.proprietario && !posto.account[m]) posto.membri[m] = mazzo.proprietario;
         posto.comandanti[m] = comandante.nome;
         posto.identita[m] = [...comandante.identita];
         posto.arte[m] = comandante.arte;
@@ -2145,6 +2241,12 @@
       bozza = bozze[scelta.modalita];
       disegnaNuovaPartita();
       finestraNuova.hidden = false;
+      // Per i posti già assegnati a un amico carichiamo i suoi mazzi
+      if (mazziDellAccount()) {
+        const amiciSeduti = new Set(Object.values(bozze).flatMap(b => b.posti.flatMap(p => p.account))
+          .filter(uid => uid && uid !== utente.uid));
+        amiciSeduti.forEach(uid => caricaMazziAmico(uid).then(disegnaGiocatoriNuova).catch(() => {}));
+      }
     });
 
     finestraNuova.querySelectorAll('[data-modalita]').forEach(b =>
@@ -2177,6 +2279,7 @@
         const comandantiCambiati = dalla.comandanti.some((c, m) => c !== posto.comandanti[m]);
         Object.assign(posto, {
           membri: dalla.membri,
+          account: dalla.account,
           comandanti: dalla.comandanti,
           identita: dalla.identita,
           arte: dalla.arte,
@@ -2189,6 +2292,11 @@
       stato.modalita = scelta.modalita;
       aggiorna();
       finestraNuova.hidden = true;
+      // Se hai messo degli amici ai posti, li invitiamo al tavolo
+      preparaTavolo().catch(errore => {
+        console.error(errore);
+        mostraAvviso('⚠️ Non riesco a invitare gli amici: controlla la connessione');
+      });
       mostraAvviso(scelta.primo === null
         ? '↺ Nuova partita iniziata!'
         : `👑 Si parte! Inizia ${nomePosto(postiInGioco()[scelta.primo])}`);
@@ -2333,18 +2441,21 @@
     pulsanteSalva.addEventListener('click', () => {
       if (vincitoreScelto === null) return;
       const posti = postiInGioco();
-      registro.unshift({
-        id: Date.now().toString(36),
+      const partita = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         data: new Date().toISOString(),
         modalita: stato.modalita,
         partecipanti: posti.map((posto, i) => ({
           giocatori: posto.membri.map(n => n.trim() || 'Senza nome'),
+          account: [...(posto.account || posto.membri.map(() => null))],
           comandanti: posto.comandanti.map(c => c.trim()),
           identita: posto.identita.map(x => (x ? [...x] : null)),
           vincitore: i === vincitoreScelto,
         })),
-      });
+      };
+      registro.unshift(partita);
       salvaRegistro();
+      salvaNelloStorico(partita);   // con l'account: finisce anche nelle statistiche
       mostraAvviso(`🏆 Vittoria di ${nomePosto(posti[vincitoreScelto])}! Partita salvata`);
 
       // Punteggi azzerati, nomi/comandanti/colori restano per la rivincita
@@ -3023,6 +3134,8 @@
     var fs = null;             // le funzioni di Firestore, scaricate quando servono
     var db = null;
     var codiceGruppo = null;
+    var tavoloAttivo = null;         // il tavolo (partita su invito) a cui sei seduto, se c'è
+    var basePercorso = null;   // dove stanno i dati condivisi: "gruppi/CODICE" oppure "partite/ID"
     var staccaAscolti = [];
     var inviati = new Map();   // percorso del documento → testo già inviato o ricevuto
     var daInviare = new Set(); // cosa è cambiato: 'stato', 'registro', 'mazzi'
@@ -3069,7 +3182,7 @@
     }
 
     // ---------- Quali documenti rappresentano i nostri dati ----------
-    const percorso = (...parti) => ['gruppi', codiceGruppo, ...parti].join('/');
+    const percorso = (...parti) => [basePercorso, ...parti].join('/');
     // Le partite registrate prima di questa versione non avevano un id: lo ricaviamo dalla data
     const idRegistro = partita => partita.id || partita.data.replace(/[^0-9A-Za-z]/g, '');
 
@@ -3131,7 +3244,7 @@
 
     // ---------- Invio delle modifiche ----------
     function notificaCambio(tipo) {
-      if (!codiceGruppo || !db) return;
+      if (!basePercorso || !db) return;
       daInviare.add(tipo);
       // Aspettiamo un attimo: tanti clic veloci su "+" partono in un solo invio
       clearTimeout(timerInvio);
@@ -3145,6 +3258,7 @@
 
       tipi.forEach(tipo => {
         if (tipo === 'mazzi' && mazziDellAccount()) return;   // i mazzi personali non vanno nel gruppo
+        if (tavoloAttivo && tipo !== 'stato') return;              // al tavolo si condivide solo la partita
         const presenti = new Set();
         documenti(tipo).forEach(({ percorso: p, dati, conContatori }) => {
           presenti.add(p);
@@ -3184,7 +3298,7 @@
 
     // I lanci dei dadi partono subito, senza attesa: devono arrivare a tutti insieme
     function inviaLancio(lancio) {
-      if (!codiceGruppo || !db) return;
+      if (!basePercorso || !db) return;
       const p = percorso('stato', 'lancio');
       // "id" e "quando" rendono ogni lancio diverso dal precedente, anche con lo stesso risultato
       const testo = JSON.stringify({ ...lancio, id: Math.random().toString(36).slice(2), quando: Date.now() });
@@ -3224,9 +3338,18 @@
     // Se Firebase interrompe un ascolto (rete assente, problema temporaneo),
     // ci ricolleghiamo da soli dopo qualche secondo
     function erroreAscolto(errore) {
+      // Al tavolo, "accesso negato" vuol dire che non ne fai più parte
+      if (tavoloAttivo && errore.code === 'permission-denied') {
+        esciDalTavolo('🚪 Non fai più parte del tavolo');
+        return;
+      }
       segnalaErrore(errore);
-      const codice = codiceGruppo;
-      setTimeout(() => { if (codiceGruppo === codice) collegaGruppo(codice); }, 5000);
+      const base = basePercorso;
+      setTimeout(() => {
+        if (basePercorso !== base) return;
+        if (tavoloAttivo) collegaTavolo(tavoloAttivo);
+        else if (codiceGruppo) collegaGruppo(codiceGruppo);
+      }, 5000);
     }
 
     // I giocatori hanno un ascolto tutto loro, perché i contatori arrivano a parte
@@ -3317,6 +3440,7 @@
         stato.partite.thg.numero = dati.numeri.thg;
       });
       ascoltaPosti();
+      if (tavoloAttivo) return;   // al tavolo si condivide solo la partita, non registro e mazzi
       ascolta('registro', (id, dati) => {
         if (dati && !dati.partecipanti) throw new Error('partita incompleta');
         sostituisciInElenco(registro, id, dati, idRegistro);
@@ -3375,14 +3499,21 @@
       return (daLink ? daLink[1] : testo).trim().toUpperCase().replace(/\s+/g, '');
     }
 
-    function collegaGruppo(codice) {
+    // Ferma tutti gli ascolti e dimentica cosa è stato inviato o ricevuto
+    function azzeraSincronizzazione() {
       staccaAscolti.forEach(ferma => ferma());
       staccaAscolti = [];
       inviati.clear();
       contatori.clear();
       sfondiGruppo.clear();
       conFoto.clear();
+    }
+
+    function collegaGruppo(codice) {
+      azzeraSincronizzazione();
+      tavoloAttivo = null;
       codiceGruppo = codice;
+      basePercorso = `gruppi/${codice}`;
       scriviLocale(CHIAVE_GRUPPO, codice);
       ascoltaGruppo();
       aggiornaVistaGruppo();
@@ -3398,10 +3529,8 @@
 
     async function entraNelGruppo(codice) {
       await caricaFirebase();
-      codiceGruppo = codice;
-      const meta = await fs.getDoc(fs.doc(db, percorso('stato', 'meta')));
+      const meta = await fs.getDoc(fs.doc(db, 'gruppi', codice, 'stato', 'meta'));
       if (!meta.exists()) {
-        codiceGruppo = leggiLocale(CHIAVE_GRUPPO);
         throw new Error('Gruppo non trovato: controlla di aver copiato tutto il codice');
       }
       // Su questo dispositivo ora valgono i dati del gruppo
@@ -3413,13 +3542,9 @@
     }
 
     function esciDalGruppo() {
-      staccaAscolti.forEach(ferma => ferma());
-      staccaAscolti = [];
-      inviati.clear();
-      contatori.clear();
-      sfondiGruppo.clear();
-      conFoto.clear();
+      azzeraSincronizzazione();
       codiceGruppo = null;
+      basePercorso = null;
       scriviLocale(CHIAVE_GRUPPO, null);
       aggiornaVistaGruppo();
     }
@@ -3436,7 +3561,18 @@
 
     const linkInvito = () => `${location.href.split('#')[0]}#gruppo=${codiceGruppo}`;
 
+    // Al tavolo: "🎲 Tavolo con Luca e Marta"
+    function testoTavolo() {
+      const altri = tavoloAttivo.membri.filter(uid => uid !== utente?.uid).map(uid => tavoloAttivo.nomi?.[uid] || 'un amico');
+      return `🎲 Tavolo con ${altri.length ? altri.join(', ') : 'nessun altro'}`;
+    }
+
     function aggiornaVistaGruppo() {
+      if (tavoloAttivo) {
+        indicatoreGruppo.textContent = testoTavolo();
+        if (!finestraTavolo.hidden) disegnaTavolo();
+        return;
+      }
       const collegato = Boolean(codiceGruppo);
       document.getElementById('gruppo-scollegato').hidden = collegato;
       document.getElementById('gruppo-collegato').hidden = !collegato;
@@ -3450,7 +3586,8 @@
     }
 
     function segnaCollegato() {
-      if (codiceGruppo) indicatoreGruppo.textContent = '🟢 Gruppo collegato';
+      if (tavoloAttivo) indicatoreGruppo.textContent = testoTavolo();
+      else if (codiceGruppo) indicatoreGruppo.textContent = '🟢 Gruppo collegato';
     }
 
     function segnalaErrore(errore) {
@@ -3467,7 +3604,8 @@
       finestraGruppo.hidden = false;
     }
 
-    indicatoreGruppo.addEventListener('click', apriFinestraGruppo);
+    // Al tavolo l'indicatore apre la finestra del tavolo, altrimenti quella del gruppo
+    indicatoreGruppo.addEventListener('click', () => (tavoloAttivo ? apriFinestraTavolo() : apriFinestraGruppo()));
 
     document.getElementById('entra-gruppo').addEventListener('click', async () => {
       const codice = pulisciCodice(document.getElementById('campo-codice').value);
@@ -3657,8 +3795,8 @@
           finestraAccount.hidden = false;
         }
       }
-      if (mazziDellAccount()) { attivaMazziAccount(); attivaAmici(); }
-      else { tornaAiMazziLocali(); disattivaAmici(); }
+      if (mazziDellAccount()) { attivaMazziAccount(); attivaAmici(); attivaInviti(); rientraAlTavolo(); }
+      else { tornaAiMazziLocali(); disattivaAmici(); disattivaInviti(); esciDalTavolo(); }
       aggiornaVistaAccount();
     }
 
@@ -3731,6 +3869,7 @@
         scriviMessaggioAccount('✓ Profilo creato!', false);
         attivaMazziAccount();
         attivaAmici();
+        attivaInviti();
         aggiornaVistaAccount();
       } catch (errore) {
         profilo = null;
@@ -4076,6 +4215,224 @@
       if (!tessera) return;
       apriMazzoAmico(mazziAmicoAperti.find(m => m.id === tessera.dataset.mazzo));
     });
+
+    // I mazzi degli amici, letti una volta e tenuti da parte (per il menu 🃏 della nuova partita)
+    var mazziDegliAmici = new Map();
+    async function caricaMazziAmico(uid) {
+      const elenco = await fs.getDocs(fs.collection(db, 'utenti', uid, 'mazzi'));
+      const lista = elenco.docs.flatMap(d => {
+        try { return [mazzoSicuro(JSON.parse(d.data().json))]; } catch (e) { return []; }
+      }).sort((a, b) => a.id.localeCompare(b.id));
+      mazziDegliAmici.set(uid, lista);
+      return lista;
+    }
+
+    // ---------- Tavoli: partite su invito ----------
+    // Un tavolo è "partite/{id}" con proprietario, membri (gli account seduti) e
+    // i loro nomi. Dentro ci sono "stato" e "posti", come per il gruppo: lo
+    // stesso motore di sincronizzazione funziona per entrambi.
+    const CHIAVE_TAVOLO = 'commander-hub-tavolo';
+    const finestraTavolo = document.getElementById('finestra-tavolo');
+    var invitiAperti = [];
+    var invitiIgnorati = new Set();
+    var staccaInviti = null;
+
+    function collegaTavolo(datiTavolo) {
+      azzeraSincronizzazione();
+      tavoloAttivo = datiTavolo;
+      codiceGruppo = null;   // il gruppo resta salvato: ci si ricollega uscendo dal tavolo
+      basePercorso = `partite/${datiTavolo.id}`;
+      scriviLocale(CHIAVE_TAVOLO, datiTavolo.id);
+      ascoltaGruppo();
+      // Teniamo d'occhio il tavolo: chi siede, e se viene chiuso
+      staccaAscolti.push(fs.onSnapshot(fs.doc(db, 'partite', datiTavolo.id), documento => {
+        if (!documento.exists()) { esciDalTavolo('🚪 Il tavolo è stato chiuso'); return; }
+        const dati = documento.data();
+        if (!dati.membri.includes(utente.uid)) { esciDalTavolo('🚪 Non fai più parte del tavolo'); return; }
+        tavoloAttivo = { id: datiTavolo.id, ...dati };
+        aggiornaVistaGruppo();
+        disegnaInviti();
+      }, () => esciDalTavolo('🚪 Non fai più parte del tavolo')));
+      aggiornaVistaGruppo();
+      disegnaInviti();
+    }
+
+    async function entraNelTavolo(id) {
+      const documento = await fs.getDoc(fs.doc(db, 'partite', id));
+      if (!documento.exists()) throw new Error('Il tavolo non esiste più');
+      collegaTavolo({ id, ...documento.data() });
+    }
+
+    // Riaprendo il sito torni al tavolo a cui eri seduto (se esiste ancora)
+    async function rientraAlTavolo() {
+      const id = leggiLocale(CHIAVE_TAVOLO);
+      if (!id || tavoloAttivo) return;
+      try {
+        await entraNelTavolo(id);
+      } catch (e) {
+        scriviLocale(CHIAVE_TAVOLO, null);
+      }
+    }
+
+    function esciDalTavolo(messaggio) {
+      if (!tavoloAttivo) return;
+      azzeraSincronizzazione();
+      tavoloAttivo = null;
+      basePercorso = null;
+      scriviLocale(CHIAVE_TAVOLO, null);
+      finestraTavolo.hidden = true;
+      // Se prima eri in un gruppo, ti ci ricolleghiamo
+      const gruppo = leggiLocale(CHIAVE_GRUPPO);
+      if (gruppo) collegaGruppo(gruppo);
+      else aggiornaVistaGruppo();
+      disegnaInviti();
+      if (messaggio) mostraAvviso(messaggio);
+    }
+
+    // Chi ha creato il tavolo può chiuderlo: si cancellano i dati della partita e il tavolo
+    async function chiudiTavolo() {
+      const id = tavoloAttivo.id;
+      for (const collezione of ['stato', 'posti']) {
+        const elenco = await fs.getDocs(fs.collection(db, 'partite', id, collezione));
+        const lotto = fs.writeBatch(db);
+        elenco.docs.forEach(d => lotto.delete(d.ref));
+        await lotto.commit();
+      }
+      esciDalTavolo('🚪 Hai chiuso il tavolo');   // prima usciamo, poi cancelliamo il tavolo
+      await fs.deleteDoc(fs.doc(db, 'partite', id));
+    }
+
+    // Chiamata da "Inizia partita": se hai scelto degli amici, li inviti al tavolo
+    async function preparaTavolo() {
+      if (!mazziDellAccount()) return;
+      const nomi = { [utente.uid]: profilo.nome };
+      postiInGioco().forEach(posto => posto.account.forEach((uid, m) => {
+        if (uid && !nomi[uid]) nomi[uid] = posto.membri[m];
+      }));
+      const membri = Object.keys(nomi);
+
+      if (tavoloAttivo) {
+        // Solo chi ha creato il tavolo decide chi siede
+        if (tavoloAttivo.proprietario !== utente.uid) return;
+        const uguali = membri.length === tavoloAttivo.membri.length && membri.every(uid => tavoloAttivo.membri.includes(uid));
+        if (!uguali) await fs.setDoc(fs.doc(db, 'partite', tavoloAttivo.id), { membri, nomi }, { merge: true });
+        return;
+      }
+      if (membri.length < 2) return;   // nessun amico al tavolo: la partita resta su questo dispositivo
+
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const datiTavolo = { proprietario: utente.uid, membri, nomi };
+      await fs.setDoc(fs.doc(db, 'partite', id), { ...datiTavolo, creato: fs.serverTimestamp() });
+      collegaTavolo({ id, ...datiTavolo });
+      // La partita preparata qui diventa quella del tavolo
+      daInviare.add('stato');
+      await inviaCambi();
+      const invitati = membri.filter(uid => uid !== utente.uid).map(uid => nomi[uid]);
+      mostraAvviso(`📨 Invito mandato a ${invitati.join(', ')}`);
+    }
+
+    // ---------- Inviti ricevuti ----------
+    function attivaInviti() {
+      disattivaInviti();
+      const uid = utente.uid;
+      const domanda = fs.query(fs.collection(db, 'partite'), fs.where('membri', 'array-contains', uid));
+      staccaInviti = fs.onSnapshot(domanda, istantanea => {
+        if (!utente || utente.uid !== uid) return;
+        invitiAperti = istantanea.docs.map(d => ({ id: d.id, ...d.data() }));
+        disegnaInviti();
+      }, errore => console.error(errore));
+    }
+
+    function disattivaInviti() {
+      if (staccaInviti) staccaInviti();
+      staccaInviti = null;
+      invitiAperti = [];
+      disegnaInviti();
+    }
+
+    function disegnaInviti() {
+      const daMostrare = invitiAperti.filter(t =>
+        t.proprietario !== utente?.uid && t.id !== tavoloAttivo?.id && !invitiIgnorati.has(t.id));
+      document.getElementById('inviti').innerHTML = daMostrare.map(t => `
+        <div class="invito">
+          <span>🎲 <strong>${pulisci(t.nomi?.[t.proprietario] || 'Un amico')}</strong> ti ha invitato a una partita</span>
+          <button class="btn attivo" data-entra-tavolo="${pulisci(t.id)}">Entra</button>
+          <button class="ignora-invito" data-ignora-tavolo="${pulisci(t.id)}" title="Ignora" aria-label="Ignora l'invito">✕</button>
+        </div>`).join('');
+    }
+
+    document.getElementById('inviti').addEventListener('click', async evento => {
+      const entra = evento.target.closest('[data-entra-tavolo]');
+      const ignora = evento.target.closest('[data-ignora-tavolo]');
+      if (ignora) {
+        invitiIgnorati.add(ignora.dataset.ignoraTavolo);
+        disegnaInviti();
+      } else if (entra) {
+        try {
+          await entraNelTavolo(entra.dataset.entraTavolo);
+          mostraVista('segnapunti');
+          mostraAvviso('🎲 Sei al tavolo!');
+        } catch (errore) {
+          mostraAvviso(`⚠️ ${errore.message || 'Non riesco a entrare al tavolo'}`);
+        }
+      }
+    });
+
+    // ---------- Finestra del tavolo ----------
+    function disegnaTavolo() {
+      const sonoProprietario = tavoloAttivo.proprietario === utente.uid;
+      document.getElementById('membri-tavolo').innerHTML = tavoloAttivo.membri.map(uid => {
+        const nome = tavoloAttivo.nomi?.[uid] || 'Amico';
+        const ruolo = uid === tavoloAttivo.proprietario ? '👑 ha creato il tavolo' : '';
+        return rigaAmico({ nome, codiceAmico: uid === utente.uid ? 'Tu' : '' },
+          `<span class="etichetta-ruolo">${ruolo}</span>`);
+      }).join('');
+      document.getElementById('nota-tavolo').textContent = sonoProprietario
+        ? 'Per invitare o togliere qualcuno usa ↺ Nuova partita e scegli chi siede a ogni posto.'
+        : `Questo tavolo l'ha creato ${tavoloAttivo.nomi?.[tavoloAttivo.proprietario] || 'un amico'}.`;
+      document.getElementById('chiudi-tavolo').hidden = !sonoProprietario;
+    }
+
+    function apriFinestraTavolo() {
+      disegnaTavolo();
+      finestraTavolo.hidden = false;
+    }
+
+    document.getElementById('esci-tavolo').addEventListener('click', () => {
+      const sonoProprietario = tavoloAttivo.proprietario === utente.uid;
+      if (!confirm(sonoProprietario
+        ? 'Uscire dal tavolo? Resterà aperto per gli altri: per chiuderlo usa "Chiudi il tavolo per tutti".'
+        : 'Uscire dal tavolo? Potrai rientrare finché è aperto.')) return;
+      esciDalTavolo('🚪 Sei uscito dal tavolo');
+    });
+
+    document.getElementById('chiudi-tavolo').addEventListener('click', async () => {
+      if (!confirm('Chiudere il tavolo per tutti? La partita in corso termina per tutti i presenti.')) return;
+      try {
+        await chiudiTavolo();
+      } catch (errore) {
+        console.error(errore);
+        mostraAvviso('⚠️ Non riesco a chiudere il tavolo, riprova');
+      }
+    });
+
+    // ---------- Storico delle partite (per le statistiche) ----------
+    // A fine partita salviamo il risultato in "storico/{id}", visibile a chi ha giocato
+    async function salvaNelloStorico(partita) {
+      if (!mazziDellAccount()) return;
+      const membri = [...new Set([utente.uid, ...partita.partecipanti.flatMap(p => p.account || []).filter(Boolean)])];
+      try {
+        await fs.setDoc(fs.doc(db, 'storico', partita.id), {
+          json: JSON.stringify(partita),
+          membri,
+          proprietario: utente.uid,
+          data: partita.data,
+        });
+      } catch (errore) {
+        console.error(errore);
+        mostraAvviso('⚠️ Partita salvata qui, ma non nello storico del tuo account');
+      }
+    }
 
     // All'apertura: se su questo dispositivo era già stato fatto l'accesso, lo ripristiniamo
     // (Firebase si scarica solo quando serve, così chi non usa l'account non aspetta)
