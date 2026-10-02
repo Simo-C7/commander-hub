@@ -227,6 +227,10 @@
     @media (min-width: 761px) {
       .azioni-rapide { right: auto; left: 16px; }
     }
+    /* Su schermi medi lasciamo loro una corsia libera, così non coprono la scheda grande */
+    @media (min-width: 761px) and (max-width: 1010px) {
+      main.tavolo { padding-left: 88px; }
+    }
     .rapido:active { transform: scale(.92); }
 
     /* ---------- Il tavolo con le schede dei giocatori ---------- */
@@ -284,6 +288,27 @@
     .comandante-piccola { min-height: 1.1em; font-size: .75rem; font-style: italic; color: var(--accento); }
     .vita-piccola { font-size: 2rem; font-weight: 800; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; }
     .veleno-piccola { font-size: .75rem; color: var(--testo-tenue); }
+
+    /* Scheda di un altro giocatore al tavolo: si vede ma non si modifica */
+    .carta.sola-lettura .grande,
+    .carta.sola-lettura .mini,
+    .carta.sola-lettura .scegli-sfondo { visibility: hidden; }
+    .carta.sola-lettura .rapidi { display: none; }
+    .carta.sola-lettura .pallino { pointer-events: none; }
+    .carta.sola-lettura .pallino:not(.scelto) { opacity: .2; }
+    .carta.sola-lettura input { cursor: default; }
+    .solo-vista {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      z-index: 1;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .75rem;
+      color: var(--testo-tenue);
+      background: rgba(0, 0, 0, .3);
+      border: 1px solid rgba(180, 140, 232, .25);
+    }
 
     /* ---------- Teschietto quando un giocatore perde ---------- */
     .teschio-sconfitta {
@@ -1817,6 +1842,9 @@
     // Costruisce l'HTML di una singola scheda giocatore/squadra
     function schedaPosto(posto, i, partita, regole) {
       const sconfitto = eSconfitto(posto, regole);
+      // Al tavolo le schede degli altri si vedono ma non si modificano
+      const modificabile = puoModificare(i);
+      const bloccato = modificabile ? '' : 'readonly';
 
       const titoloSquadra = stato.modalita === 'thg'
         ? `<div class="squadra">Squadra ${i + 1}</div>` : '';
@@ -1824,11 +1852,11 @@
       // Per ogni giocatore: il suo nome e, sotto, il nome del suo comandante
       const campiNome = posto.membri.map((nome, m) => `
         <div class="giocatore">
-          <input class="nome" value="${pulisci(nome)}" maxlength="20"
+          <input class="nome" value="${pulisci(nome)}" maxlength="20" ${bloccato}
                  data-i="${i}" data-m="${m}" data-campo="membri" aria-label="Nome giocatore">
           <input class="comandante ${posto.comandanti[m] && !posto.identita[m] ? 'da-verificare' : ''}"
-                 value="${pulisci(posto.comandanti[m])}" maxlength="60" autocomplete="off" spellcheck="false"
-                 placeholder="Nome del comandante…"
+                 value="${pulisci(posto.comandanti[m])}" maxlength="60" autocomplete="off" spellcheck="false" ${bloccato}
+                 placeholder="${modificabile ? 'Nome del comandante…' : ''}"
                  title="${posto.comandanti[m] && !posto.identita[m] ? 'Comandante non trovato su Scryfall' : ''}"
                  data-i="${i}" data-m="${m}" data-campo="comandanti" aria-label="Nome del comandante">
         </div>`).join('');
@@ -1868,9 +1896,10 @@
       const stileSfondo = sfondo ? `--immagine: url('${sfondo}');` : '';
 
       return `
-        <section class="carta ${sconfitto ? 'sconfitto' : ''} ${sfondo ? 'con-sfondo' : ''}"
+        <section class="carta ${sconfitto ? 'sconfitto' : ''} ${sfondo ? 'con-sfondo' : ''} ${modificabile ? '' : 'sola-lettura'}"
                  style="${stileColori(posto.colori)} ${stileSfondo}">
           ${sconfitto ? '<div class="timbro">Sconfitto</div>' : ''}
+          ${modificabile ? '' : '<div class="solo-vista">👁 Solo visualizzazione</div>'}
           ${titoloSquadra}
           <div class="nomi">${campiNome}</div>
           <div class="pallini">
@@ -1909,6 +1938,25 @@
     }
 
     // Ridisegna tutta la pagina a partire dallo stato attuale
+    // ---------- Chi può modificare una scheda ----------
+    // Senza tavolo si gestisce tutto da questo dispositivo. Al tavolo ognuno
+    // modifica solo la propria scheda; quelle degli ospiti (senza account)
+    // le gestisce chi ha creato il tavolo.
+    function puoModificare(i) {
+      if (!tavoloAttivo || !utente) return true;
+      const account = partitaAttuale().posti[i]?.account || [];
+      if (account.includes(utente.uid)) return true;
+      return tavoloAttivo.proprietario === utente.uid && account.every(a => !a);
+    }
+
+    // Al tavolo "Nuova partita" e "Fine partita" azzerano le schede di tutti:
+    // le può usare solo chi ha creato il tavolo
+    function puoGestireLaPartita() {
+      if (!tavoloAttivo || !utente || tavoloAttivo.proprietario === utente.uid) return true;
+      mostraAvviso(`Solo ${tavoloAttivo.nomi?.[tavoloAttivo.proprietario] || 'chi ha creato il tavolo'} può farlo al tavolo`);
+      return false;
+    }
+
     // ---------- Quale scheda si vede in grande ----------
     // Di solito la tua (quella collegata al tuo account), altrimenti la prima.
     // Toccando una scheda piccola, diventa lei quella grande.
@@ -2022,6 +2070,7 @@
 
       const pulsante = evento.target.closest('[data-azione]');
       if (!pulsante) return;
+      if (!puoModificare(Number(pulsante.dataset.i))) return;   // scheda di un altro giocatore
 
       // Il pulsante dello sfondo apre solo un menu: non cambia niente subito
       if (pulsante.dataset.azione === 'sfondo') {
@@ -2328,6 +2377,7 @@
     // ---------- Modifica dei nomi (giocatori e comandanti) ----------
     // Mentre scrivi salviamo soltanto; ridisegniamo quando esci dal campo
     tavolo.addEventListener('input', evento => {
+      if (evento.target.dataset.i && !puoModificare(Number(evento.target.dataset.i))) return;
       const campo = evento.target;
       if (!campo.dataset.campo) return;
       const posto = partitaAttuale().posti[campo.dataset.i];
@@ -2531,6 +2581,7 @@
     }
 
     document.getElementById('nuova-partita').addEventListener('click', () => {
+      if (!puoGestireLaPartita()) return;
       scelta.modalita = stato.modalita;
       scelta.numero = stato.partite.commander.numero;
       scelta.primo = null;
@@ -2720,6 +2771,7 @@
     }
 
     document.getElementById('fine-partita').addEventListener('click', () => {
+      if (!puoGestireLaPartita()) return;
       // Se è rimasto in piedi un solo giocatore, lo proponiamo già come vincitore
       const regole = regoleAttuali();
       const inPiedi = postiInGioco().map((p, i) => i).filter(i => !eSconfitto(postiInGioco()[i], regole));
@@ -3556,6 +3608,8 @@
       if (inviati.get(p) !== testo) {
         inviati.set(p, testo);
         campi.json = testo;
+        // Chi siede a questo posto: le regole di Firebase lo usano per decidere chi può modificarlo
+        campi.account = (posto.account || []).map(a => a || null);
       }
       const noti = contatori.get(p);
       if (!noti) {
@@ -3569,6 +3623,18 @@
       contatori.set(p, { vita, veleno });
       if (!Object.keys(campi).length) return null;
       return lotto => lotto.set(fs.doc(db, p), campi, { merge: true });
+    }
+
+    // Al tavolo puoi scrivere solo la tua scheda (e la sua foto di sfondo).
+    // Chi ha creato il tavolo può scrivere tutto: gestisce ospiti e nuove partite.
+    function possoScrivere(p) {
+      if (!tavoloAttivo || tavoloAttivo.proprietario === utente?.uid) return true;
+      const nome = p.split('/').pop();
+      if (nome === 'lancio') return true;
+      const chiave = p.includes('/posti/') ? nome : nome.startsWith('sfondo-') ? nome.slice('sfondo-'.length) : null;
+      if (!chiave) return false;   // es. le impostazioni della partita
+      const [modalita, indice] = chiave.split('-');
+      return (stato.partite[modalita]?.posti[Number(indice)]?.account || []).includes(utente?.uid);
     }
 
     // ---------- Invio delle modifiche ----------
@@ -3591,6 +3657,7 @@
         const presenti = new Set();
         documenti(tipo).forEach(({ percorso: p, dati, conContatori }) => {
           presenti.add(p);
+          if (!possoScrivere(p)) return;   // al tavolo: solo i dati che spettano a te
           if (conContatori) {
             const operazione = operazionePosto(p, dati);
             if (operazione) operazioni.push(operazione);
