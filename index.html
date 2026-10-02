@@ -2,8 +2,20 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Commander Hub – Segnapunti</title>
+  <!-- viewport-fit=cover: sugli iPhone con il "notch" l'app usa tutto lo schermo -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Commander Hub</title>
+  <meta name="description" content="Il punto di ritrovo del gruppo Commander: segnapunti, tavoli con gli amici, mazzi e statistiche.">
+
+  <!-- App installabile (PWA): nome, icone e colori -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#241140">
+  <link rel="icon" type="image/png" sizes="32x32" href="icone/icona-32.png">
+  <link rel="apple-touch-icon" href="icone/icona-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Commander Hub">
 
   <!-- ============================================================
        CSS: definisce l'ASPETTO della pagina (colori, spazi, forme)
@@ -206,7 +218,7 @@
     .azioni-rapide {
       position: fixed;
       right: 16px;
-      bottom: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom));   /* sopra la barra di sistema degli iPhone */
       z-index: 5;
       display: flex;
       flex-direction: column;
@@ -910,8 +922,8 @@
     body:not([data-vista="home"]) header .simboli-mana,
     body:not([data-vista="home"]) header .sottotitolo { display: none; }
     body:not([data-vista="home"]) header h1 { font-size: 1.3rem; }
-    body:not([data-vista="home"]) header { padding-top: 22px; }
-    body[data-vista="home"] header { padding-top: 48px; }
+    body:not([data-vista="home"]) header { padding-top: calc(22px + env(safe-area-inset-top)); }
+    body[data-vista="home"] header { padding-top: calc(48px + env(safe-area-inset-top)); }
     body[data-vista="home"] header h1 { font-size: 2.6rem; }
 
     .vista-home { max-width: 460px; margin: 0 auto; padding: 26px 16px 40px; }
@@ -950,11 +962,16 @@
     .riga-codice-tavolo .codice-gruppo { font-size: 1.5rem; letter-spacing: .12em; }
     #codice-tavolo { text-transform: uppercase; letter-spacing: .1em; }
 
+    /* Installazione dell'app */
+    .vista-home .installa-app { justify-self: center; margin-top: 4px; }
+    .icona-installa { display: block; width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 16px; }
+    .passi-installa { text-align: left; margin: 0; padding-left: 22px; line-height: 1.6; font-size: .92rem; }
+
     /* ---------- Menu laterale ---------- */
     .apri-menu {
       position: fixed;
-      top: 14px;
-      left: 14px;
+      top: calc(14px + env(safe-area-inset-top));   /* sotto il notch degli iPhone */
+      left: calc(14px + env(safe-area-inset-left));
       z-index: 8;
       width: 46px;
       height: 46px;
@@ -993,7 +1010,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding: 16px 12px;
+      padding: calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));
       background: linear-gradient(180deg, rgb(46, 22, 82), rgb(22, 10, 40));
       border-right: 1px solid rgba(180, 140, 232, .35);
       box-shadow: 8px 0 30px rgba(0, 0, 0, .5);
@@ -1374,6 +1391,8 @@
     <button class="voce-menu" data-vista="mazzi">🃏 Mazzi</button>
     <button class="voce-menu" data-vista="amici">👥 Amici <span class="contatore-richieste" id="contatore-richieste" hidden></span></button>
     <button class="voce-menu" id="apri-registro">📜 Registro</button>
+    <div class="separa-menu"></div>
+    <button class="voce-menu installa-app" hidden>📲 Installa l'app</button>
   </nav>
 
   <header>
@@ -1402,6 +1421,7 @@
       </button>
       <button class="pulsante-home" id="crea-tavolo">＋ Crea un nuovo tavolo</button>
       <button class="pulsante-home" id="unisciti-tavolo">🚪 Unisciti a un tavolo</button>
+      <button class="link-semplice installa-app" hidden>📲 Installa Commander Hub come app</button>
     </div>
     <div id="blocco-miei-tavoli" hidden>
       <h3>I tuoi tavoli</h3>
@@ -1510,6 +1530,21 @@
       </div>
       <h3>I tuoi amici</h3>
       <div class="elenco-amici" id="elenco-amici"></div>
+    </div>
+  </div>
+
+  <!-- Istruzioni per installare l'app su iPhone e iPad (lì non c'è il pulsante automatico) -->
+  <div class="finestra" id="finestra-installa" hidden>
+    <div class="pannello" role="dialog" aria-label="Installa l'app">
+      <button class="chiudi" data-chiudi aria-label="Chiudi">✕</button>
+      <h2>📲 Installa l'app</h2>
+      <img class="icona-installa" src="icone/icona-180.png" alt="">
+      <ol class="passi-installa">
+        <li>Apri questo sito con <strong>Safari</strong>.</li>
+        <li>Tocca il pulsante <strong>Condividi</strong> (il quadrato con la freccia verso l'alto).</li>
+        <li>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>.</li>
+        <li>Conferma con <strong>Aggiungi</strong>: l'icona comparirà tra le tue app.</li>
+      </ol>
     </div>
   </div>
 
@@ -3638,6 +3673,51 @@
     document.addEventListener('visibilitychange', aggiornaSchermoAcceso);
     // Alcuni telefoni (iPhone) lo concedono solo dopo un tocco sulla pagina
     document.addEventListener('pointerdown', () => { if (!bloccoSchermo) aggiornaSchermoAcceso(); });
+
+    // ---------- App installabile (PWA) ----------
+    // Il service worker (sw.js) tiene una copia del sito sul dispositivo:
+    // così l'app si apre anche senza rete. Funziona solo da un indirizzo web vero.
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(errore => console.warn('Service worker non registrato', errore));
+      });
+    }
+
+    var richiestaInstallazione = null;   // la proposta di installazione del browser (Android e computer)
+    const giaInstallata = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const suIPhone = /iphone|ipad|ipod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // gli iPad recenti si presentano come Mac
+
+    function aggiornaPulsantiInstalla() {
+      const mostra = !giaInstallata() && Boolean(richiestaInstallazione || suIPhone);
+      document.querySelectorAll('.installa-app').forEach(pulsante => { pulsante.hidden = !mostra; });
+    }
+
+    // Android e computer: il browser ci avvisa quando l'app si può installare
+    window.addEventListener('beforeinstallprompt', evento => {
+      evento.preventDefault();   // la proposta la mostriamo noi, con il nostro pulsante
+      richiestaInstallazione = evento;
+      aggiornaPulsantiInstalla();
+    });
+    window.addEventListener('appinstalled', () => {
+      richiestaInstallazione = null;
+      aggiornaPulsantiInstalla();
+      mostraAvviso('📲 App installata! La trovi tra le tue app');
+    });
+
+    document.querySelectorAll('.installa-app').forEach(pulsante => pulsante.addEventListener('click', async () => {
+      if (richiestaInstallazione) {
+        richiestaInstallazione.prompt();
+        await richiestaInstallazione.userChoice;
+        richiestaInstallazione = null;
+        aggiornaPulsantiInstalla();
+      } else {
+        // iPhone e iPad: si installa a mano da Safari
+        document.getElementById('finestra-installa').hidden = false;
+      }
+    }));
+
+    aggiornaPulsantiInstalla();
 
     // ---------- Stelle dello sfondo ----------
     // Sparge piccole luci colorate ferme, con posizione, grandezza e colore casuali
